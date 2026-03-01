@@ -1,5 +1,18 @@
-export default function App(){
+import { useState } from 'react';
+import Preloader from './components/Preloader';
+import Navbar from './components/Navbar';
+
+export default function App() {
+    const [loading, setLoading] = useState(true);
+
     return (
-        <h1>App</h1>
+        <>
+            <Navbar />
+            {loading && <Preloader onComplete={() => setLoading(false)} />}
+            {!loading && (
+                <div className="main-content">
+                </div>
+            )}
+        </>
     )
 }

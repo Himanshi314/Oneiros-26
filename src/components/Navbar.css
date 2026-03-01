@@ -1,0 +1,270 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&display=swap');
+
+/* Liquid Ether Navbar Styles */
+.cosmos-navbar {
+    position: absolute;
+    top: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    width: fit-content;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0.8rem 2.5rem;
+    border-radius: 40px;
+    /* Liquid Glass background with Stars */
+    background-color: rgba(10, 15, 30, 0.4);
+    background-image:
+        radial-gradient(circle at center, rgba(0, 255, 235, 0.1) 0%, transparent 70%),
+        url('data:image/svg+xml;utf8,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><circle cx="40" cy="40" r="1" fill="white" opacity="0.8"/><circle cx="150" cy="20" r="1.5" fill="white" opacity="0.6"/><circle cx="80" cy="180" r="1" fill="white" opacity="0.9"/><circle cx="170" cy="140" r="0.5" fill="white" opacity="0.4"/><circle cx="10" cy="120" r="1" fill="white" opacity="0.5"/><circle cx="100" cy="90" r="0.5" fill="white" opacity="0.7"/></svg>');
+    background-size: 100% 100%, 150px 150px;
+    background-position: center, 0 0;
+    /* Glassmorphism effects */
+    backdrop-filter: blur(24px) saturate(150%);
+    -webkit-backdrop-filter: blur(24px) saturate(150%);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-top: 1px solid rgba(255, 255, 255, 0.3);
+    /* Top highlight for liquid glass */
+    box-shadow:
+        0 8px 32px 0 rgba(0, 195, 255, 0.15),
+        inset 0 2px 5px rgba(255, 255, 255, 0.1),
+        inset 0 -2px 10px rgba(0, 255, 235, 0.05);
+    z-index: 1000;
+    box-sizing: border-box;
+    font-family: 'Exo 2', sans-serif;
+    transition: box-shadow 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+        background-color 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+        border-color 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+        transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    animation: drift 60s linear infinite;
+}
+
+@keyframes drift {
+    from {
+        background-position: center, 0 0;
+    }
+
+    to {
+        background-position: center, -300px -300px;
+    }
+}
+
+.cosmos-navbar:hover {
+    box-shadow:
+        0 12px 40px 0 rgba(0, 195, 255, 0.25),
+        inset 0 2px 8px rgba(255, 255, 255, 0.15),
+        inset 0 -2px 15px rgba(0, 255, 235, 0.1);
+    background-color: rgba(15, 22, 45, 0.45);
+    border-color: rgba(255, 255, 255, 0.25);
+    transform: translateX(-50%) translateY(-2px);
+}
+
+.nav-links-container {
+    display: flex;
+    justify-content: center;
+    width: auto;
+    align-items: center;
+}
+
+.cosmos-nav-links {
+    list-style: none;
+    display: flex;
+    gap: 2.5rem;
+    margin: 0;
+    padding: 0;
+}
+
+.cosmos-nav-links a {
+    text-decoration: none;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 1rem;
+    font-weight: 400;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    position: relative;
+    padding: 0.5rem 0;
+    transition: color 0.4s ease;
+}
+
+/* Liquid underline effect */
+.cosmos-nav-links a::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(0, 255, 235, 0.8), transparent);
+    transition: width 0.4s ease;
+    filter: drop-shadow(0 0 4px rgba(0, 255, 235, 0.5));
+}
+
+.cosmos-nav-links a:hover {
+    color: #fff;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+}
+
+.cosmos-nav-links a:hover::after {
+    width: 100%;
+}
+
+.cosmos-nav-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4rem;
+    /* Adds explicit padding around the logo to ensure spacing */
+}
+
+/* Hide the mobile logo on desktop */
+.mobile-logo {
+    display: none;
+}
+
+.cosmos-nav-logo .neon-text {
+    color: #fff;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.8rem;
+    font-weight: 700;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    /* Liquid/Ether text effect */
+    background: linear-gradient(to right, #ffffff, #88f0ff, #ffffff);
+    background-size: 200% auto;
+    color: transparent;
+    -webkit-background-clip: text;
+    background-clip: text;
+    animation: flow 4s linear infinite;
+    filter: drop-shadow(0 0 12px rgba(136, 240, 255, 0.3));
+}
+
+@keyframes flow {
+    to {
+        background-position: 200% center;
+    }
+}
+
+/* Mobile Hamburger Button */
+.mobile-menu-btn {
+    display: none;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 30px;
+    height: 21px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    z-index: 100;
+}
+
+.hamburger-line {
+    width: 100%;
+    height: 3px;
+    background-color: #00f0ff;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 8px rgba(0, 240, 255, 0.6);
+}
+
+.mobile-menu-btn.open .hamburger-line:nth-child(1) {
+    transform: translateY(9px) rotate(45deg);
+}
+
+.mobile-menu-btn.open .hamburger-line:nth-child(2) {
+    opacity: 0;
+}
+
+.mobile-menu-btn.open .hamburger-line:nth-child(3) {
+    transform: translateY(-9px) rotate(-45deg);
+}
+
+/* Mobile specific styling adjustments */
+@media (max-width: 900px) {
+    .cosmos-navbar {
+        width: calc(100% - 2rem);
+        padding: 1rem 1.5rem;
+        height: 70px;
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between !important;
+        align-items: center;
+        flex-wrap: nowrap !important;
+    }
+
+    .desktop-logo {
+        display: none;
+    }
+
+    .mobile-logo {
+        display: flex;
+        padding: 0;
+        margin: 0;
+        flex: 0 0 auto;
+        order: 2;
+    }
+
+    .mobile-logo .neon-text {
+        font-size: 1.6rem;
+    }
+
+    .mobile-menu-btn {
+        display: flex;
+        margin: 0;
+        flex: 0 0 auto;
+        order: 1;
+    }
+
+    .nav-links-container {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        width: 100%;
+        flex-direction: column;
+        background-color: rgba(10, 15, 30, 0.6);
+        background-image:
+            radial-gradient(circle at center, rgba(0, 255, 235, 0.1) 0%, transparent 70%),
+            url('data:image/svg+xml;utf8,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><circle cx="40" cy="40" r="1" fill="white" opacity="0.8"/><circle cx="150" cy="20" r="1.5" fill="white" opacity="0.6"/><circle cx="80" cy="180" r="1" fill="white" opacity="0.9"/><circle cx="170" cy="140" r="0.5" fill="white" opacity="0.4"/><circle cx="10" cy="120" r="1" fill="white" opacity="0.5"/><circle cx="100" cy="90" r="0.5" fill="white" opacity="0.7"/></svg>');
+        background-size: 100% 100%, 150px 150px;
+        background-position: center, 0 0;
+        backdrop-filter: blur(24px) saturate(150%);
+        -webkit-backdrop-filter: blur(24px) saturate(150%);
+        padding: 2rem 0;
+        border-radius: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-top: none;
+        box-shadow:
+            0 15px 32px 0 rgba(0, 195, 255, 0.15),
+            inset 0 2px 5px rgba(255, 255, 255, 0.1),
+            inset 0 -2px 10px rgba(0, 255, 235, 0.05);
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-20px);
+        transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        z-index: 10;
+        animation: drift 60s linear infinite;
+    }
+
+    .nav-links-container.mobile-visible {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(10px);
+    }
+
+    .cosmos-nav-links {
+        flex-direction: column;
+        gap: 1.5rem;
+        width: 100%;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .cosmos-nav-links.right-links {
+        margin-bottom: 0;
+    }
+
+    .cosmos-nav-links a {
+        font-size: 1.2rem;
+    }
+}

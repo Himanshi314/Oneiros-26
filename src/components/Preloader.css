@@ -1,0 +1,100 @@
+.preloader-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    /* Fallback */
+    height: 100dvh;
+    /* Modern mobile browsers */
+    background-color: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+    /* Ensure it stays above everything */
+    transition: opacity 0.5s ease, visibility 0.5s ease;
+    overflow: hidden;
+}
+
+.preloader-container.fade-out {
+    opacity: 0;
+    visibility: hidden;
+}
+
+.preloader-video {
+    width: 60%;
+    max-width: 600px;
+    height: auto;
+    object-fit: contain;
+    /* Prevents distortion and keeps aspect ratio */
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    /* Prevents interaction with the video element */
+}
+
+/* Mobile specific styling adjustments */
+@media (max-width: 768px) {
+    .preloader-video {
+        /* Mild zoom for mobile */
+        width: 120%;
+        max-width: 550px;
+
+        /* Natural enlargement avoiding scale clipping */
+        transform: translate(-50%, -50%) translateZ(0);
+    }
+}
+
+/* Loading Bar Styles */
+.loading-wrapper {
+    position: absolute;
+    bottom: 15%;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 80%;
+    max-width: 400px;
+    font-family: 'Exo 2', sans-serif;
+    z-index: 10;
+}
+
+.loading-percentage {
+    color: #fff;
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.2rem;
+    letter-spacing: 2px;
+    text-shadow: 0 0 10px rgba(0, 255, 235, 0.8), 0 0 20px rgba(0, 255, 235, 0.4);
+}
+
+.loading-text {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    font-weight: 500;
+}
+
+.loading-bar-bg {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.8), 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.loading-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, rgba(0, 255, 235, 0.2), rgba(0, 255, 235, 0.8), #fff);
+    border-radius: 10px;
+    transition: width 0.15s linear;
+    box-shadow: 0 0 15px rgba(0, 255, 235, 0.6), inset 0 0 5px rgba(255, 255, 255, 0.8);
+}
