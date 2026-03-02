@@ -6,7 +6,7 @@ interface PreloaderProps {
     onComplete: () => void;
 }
 
-const Preloader: React.FC<PreloaderProps> = ({ onComplete }) => {
+export default function Preloader({ onComplete }: PreloaderProps) {
     const [fadeOut, setFadeOut] = useState(false);
     const [progress, setProgress] = useState(0);
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -76,6 +76,4 @@ const Preloader: React.FC<PreloaderProps> = ({ onComplete }) => {
             </div>
         </div>
     );
-};
-
-export default Preloader;
+}
