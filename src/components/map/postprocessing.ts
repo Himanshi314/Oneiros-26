@@ -8,8 +8,8 @@ import type { QualityProfile } from './quality';
 const VignetteShader = {
   uniforms: {
     tDiffuse: { value: null },
-    offset: { value: 1.05 },
-    darkness: { value: 0.55 },
+    offset: { value: 0.95 },
+    darkness: { value: 0.28 },
   },
   vertexShader: `
     varying vec2 vUv;

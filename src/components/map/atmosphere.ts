@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 export const applyAtmosphereFog = (scene: THREE.Scene, density = 0.012) => {
-  scene.fog = new THREE.FogExp2(0x050712, density);
+  scene.fog = new THREE.FogExp2(0x162a4a, density);
 };
 
 export type DustField = {

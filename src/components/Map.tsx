@@ -93,7 +93,7 @@ export default function Map({ onNavigate }: MapProps) {
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = qualityProfile.level === 'LOW' ? 1.2 : 1.0;
+    renderer.toneMappingExposure = qualityProfile.level === 'LOW' ? 1.36 : 1.24;
 
     const canvas = renderer.domElement;
     canvas.style.cssText = `
@@ -110,8 +110,8 @@ export default function Map({ onNavigate }: MapProps) {
 
     // ── SCENE + CAMERA ─────────────────────────────────────────────────────────
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x020205); // Very dark cosmic blue
-    applyAtmosphereFog(scene, qualityProfile.level === 'LOW' ? 0.0075 : 0.012);
+    scene.background = new THREE.Color(0x0a1328);
+    applyAtmosphereFog(scene, qualityProfile.level === 'LOW' ? 0.0038 : 0.0062);
 
     const camera = new THREE.PerspectiveCamera(
       60, window.innerWidth / window.innerHeight, 0.05, 300
@@ -291,8 +291,8 @@ export default function Map({ onNavigate }: MapProps) {
       renderer.setSize(window.innerWidth, window.innerHeight);
       renderer.shadowMap.enabled = qualityProfile.enableDynamicLights;
       renderer.shadowMap.needsUpdate = true;
-      renderer.toneMappingExposure = qualityProfile.level === 'LOW' ? 1.2 : 1.0;
-      applyAtmosphereFog(scene, qualityProfile.level === 'LOW' ? 0.0075 : 0.012);
+      renderer.toneMappingExposure = qualityProfile.level === 'LOW' ? 1.36 : 1.24;
+      applyAtmosphereFog(scene, qualityProfile.level === 'LOW' ? 0.0038 : 0.0062);
 
       const shouldUseShader = qualityProfile.enableShaderGrid;
       if (shouldUseShader !== gridUsesShader) {

@@ -28,7 +28,7 @@ export const createEnhancementState = (): SceneEnhancementState => ({
 });
 
 export const setupCinematicLights = (scene: THREE.Scene, quality: QualityProfile) => {
-  const key = new THREE.DirectionalLight(0xbfd5ff, 1.5);
+  const key = new THREE.DirectionalLight(0xbfd5ff, 1.9);
   key.position.set(26, 34, 18);
   key.castShadow = true;
   key.shadow.mapSize.set(1024, 1024);
@@ -40,11 +40,11 @@ export const setupCinematicLights = (scene: THREE.Scene, quality: QualityProfile
   (key.shadow.camera as THREE.OrthographicCamera).bottom = -70;
   key.shadow.bias = -0.0015;
 
-  const rim = new THREE.DirectionalLight(0xb866ff, 0.72);
+  const rim = new THREE.DirectionalLight(0xb866ff, 0.95);
   rim.position.set(-30, 10, -28);
 
-  const fill = new THREE.HemisphereLight(0x66d8ff, 0x1c1036, quality.enableDynamicLights ? 0.48 : 0.9);
-  const ambient = new THREE.AmbientLight(0x7a8dff, quality.enableDynamicLights ? 0.12 : 0.35);
+  const fill = new THREE.HemisphereLight(0x66d8ff, 0x1c1036, quality.enableDynamicLights ? 0.7 : 1.1);
+  const ambient = new THREE.AmbientLight(0x7a8dff, quality.enableDynamicLights ? 0.22 : 0.45);
 
   scene.add(fill);
   scene.add(ambient);
