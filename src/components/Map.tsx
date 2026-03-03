@@ -44,15 +44,27 @@ import {
 
 interface MapProps {
   onNavigate?: (page: string) => void;
+  onClose?: () => void;
+  activePage?: string | null;
 }
 
-export default function Map({ onNavigate }: MapProps) {
+export default function Map({ onNavigate, onClose, activePage }: MapProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const onNavigateRef = useRef<MapProps['onNavigate']>(onNavigate);
+  const onCloseRef = useRef<MapProps['onClose']>(onClose);
+  const activePageRef = useRef<MapProps['activePage']>(activePage);
 
   useEffect(() => {
     onNavigateRef.current = onNavigate;
   }, [onNavigate]);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    activePageRef.current = activePage;
+  }, [activePage]);
 
   useEffect(() => {
     const container = mountRef.current;
@@ -249,7 +261,14 @@ export default function Map({ onNavigate }: MapProps) {
     };
 
     const onMarkerKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'e' || e.key === 'E') onMarkerActivate();
+      if (e.key === 'e' || e.key === 'E') {
+        // If a page overlay is currently open, close it and return to the scene
+        if (activePageRef.current) {
+          onCloseRef.current?.();
+        } else {
+          onMarkerActivate();
+        }
+      }
     };
     window.addEventListener('keydown', onMarkerKeyDown);
 
