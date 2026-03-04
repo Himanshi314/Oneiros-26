@@ -88,7 +88,20 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
       if (isTouch && joystickZone) joystickZone.style.display = 'flex';
     };
 
-    window.addEventListener('start-experience', showUI);
+    let isIntroActive = false;
+    let introStartTime = 0;
+    let introInitialized = false;
+    const INTRO_DURATION = 4.5; // 4.5 seconds for a dynamic 360 sweep
+
+    const startIntro = () => {
+      isIntroActive = true;
+      introInitialized = false;
+      if (stateEl) stateEl.style.display = 'none';
+      if (hudEl) hudEl.style.display = 'none';
+      if (joystickZone) joystickZone.style.display = 'none';
+    };
+
+    window.addEventListener('start-experience', startIntro);
 
     // ── RENDERER ──────────────────────────────────────────────────────────────
     const renderer = new THREE.WebGLRenderer({
@@ -490,6 +503,7 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
     };
     const onOrientationChange = () => setTimeout(onResize, 100);
     const onWheel = (e: WheelEvent) => {
+      if (isIntroActive) return;
       camDist = clampCamDist(camDist + e.deltaY * 0.02);
     };
 
@@ -521,7 +535,7 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
     };
     const onMouseUp = () => { isDragging = false; };
     const onMouseMove = (e: MouseEvent) => {
-      if (!isDragging) return;
+      if (!isDragging || isIntroActive) return;
       camYaw -= (e.clientX - lastMX) * 0.004;
       camPitch = Math.max(CAM_PITCH_MIN, Math.min(CAM_PITCH_MAX,
         camPitch + (e.clientY - lastMY) * 0.004));
@@ -632,7 +646,7 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
         if (t.identifier === joyId) {
           const c = joyCenter();
           moveKnob(t.clientX - c.x, t.clientY - c.y);
-        } else if (t.identifier === camTouchId && pinchId2 === null) {
+        } else if (t.identifier === camTouchId && pinchId2 === null && !isIntroActive) {
           camYaw -= (t.clientX - lastCamTX) * 0.004;
           camPitch = Math.max(CAM_PITCH_MIN, Math.min(CAM_PITCH_MAX,
             camPitch + (t.clientY - lastCamTY) * 0.004));
@@ -640,7 +654,7 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
         }
       }
       // Pinch to zoom
-      if (pinchId2 !== null && e.touches.length >= 2) {
+      if (pinchId2 !== null && e.touches.length >= 2 && !isIntroActive) {
         const tA = getTouchById(e.touches, camTouchId!);
         const tB = getTouchById(e.touches, pinchId2);
         if (tA && tB) {
@@ -709,17 +723,45 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
       // Update animation mixers
       for (const mx of mixers) mx.update(dt);
 
+      if (isIntroActive) {
+        if (!introInitialized) {
+          introStartTime = elapsed;
+          introInitialized = true;
+        }
+        const introElapsed = elapsed - introStartTime;
+        if (introElapsed >= INTRO_DURATION) {
+          isIntroActive = false;
+          showUI();
+          camYaw = Math.PI;
+          camPitch = 0.1;
+          camDist = CAM_DIST_DEFAULT;
+        } else {
+          // Smooth progress
+          const progress = introElapsed / INTRO_DURATION;
+          // Cubic ease-in-out
+          const eased = progress < 0.5 ? 4 * progress * progress * progress : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+
+          camYaw = Math.PI - eased * Math.PI * 2; // spin 360 clockwise
+          camPitch = 0.1 + Math.sin(progress * Math.PI) * 0.3; // dip down, then up
+          camDist = CAM_DIST_DEFAULT + Math.sin(progress * Math.PI) * 12; // zoom out, then in
+        }
+      }
+
       // Input — keyboard overrides joystick
-      const kbX = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
-      const kbY = (keys.w ? 1 : 0) - (keys.s ? 1 : 0);
-      const inputX = kbX !== 0 ? kbX : joyVec.x;
-      const inputY = kbY !== 0 ? kbY : -joyVec.y;
-      const moving = (inputX * inputX + inputY * inputY) > 0.0025;
+      let inputX = 0, inputY = 0;
+      let moving = false, sprint = false;
 
-      const joySprint = joyMag >= SPRINT_THRESHOLD;
-      const sprint = moving && (keys.shift || joySprint);
+      if (!isIntroActive) {
+        const kbX = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
+        const kbY = (keys.w ? 1 : 0) - (keys.s ? 1 : 0);
+        inputX = kbX !== 0 ? kbX : joyVec.x;
+        inputY = kbY !== 0 ? kbY : -joyVec.y;
+        moving = (inputX * inputX + inputY * inputY) > 0.0025;
 
-      if (joyId !== null) setJoySprintVisual(joySprint);
+        const joySprint = joyMag >= SPRINT_THRESHOLD;
+        sprint = moving && (keys.shift || joySprint);
+        if (joyId !== null) setJoySprintVisual(joySprint);
+      }
 
       if (armatures.length > 0) {
         setCharState(moving ? (sprint ? STATE_RUN : STATE_WALK) : STATE_IDLE);
@@ -1065,7 +1107,7 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
       if (hudEl) hudEl.style.display = 'none';
       if (joystickZone) joystickZone.style.display = 'none';
 
-      window.removeEventListener('start-experience', showUI);
+      window.removeEventListener('start-experience', startIntro);
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('mousedown', onMouseDown);
