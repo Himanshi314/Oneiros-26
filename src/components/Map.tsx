@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { createMovementKeys, updateMovementKey } from './map/input';
 import { createMarkerPrompt, createSceneMarkers, setMarkerPromptState } from './map/markers';
-import { enableMeshShadows, fixMapMaterials, loadGLB, type LoadedGLTF } from './map/loading';
+import { enableMeshShadows, fixMapMaterials, loadGLB, applyEmissionTweaks, type LoadedGLTF } from './map/loading';
 import { applyAtmosphereFog, createFloatingDust } from './map/atmosphere';
 import { createNeonGridMaterial } from './map/neon';
 import {
@@ -52,34 +52,23 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
   const onCloseRef = useRef<MapProps['onClose']>(onClose);
   const activePageRef = useRef<MapProps['activePage']>(activePage);
 
-  useEffect(() => {
-    onNavigateRef.current = onNavigate;
-  }, [onNavigate]);
-
-  useEffect(() => {
-    onCloseRef.current = onClose;
-  }, [onClose]);
-
-  useEffect(() => {
-    activePageRef.current = activePage;
-  }, [activePage]);
+  useEffect(() => { onNavigateRef.current = onNavigate; }, [onNavigate]);
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+  useEffect(() => { activePageRef.current = activePage; }, [activePage]);
 
   useEffect(() => {
     const container = mountRef.current;
     if (!container) return;
     const isDev = import.meta.env.DEV;
-    const logDev = (...args: unknown[]) => {
-      if (isDev) console.log(...args);
-    };
+    const logDev = (...args: unknown[]) => { if (isDev) console.log(...args); };
 
-    // ── UI DOM REFS ────────────────────────────────────────────────────────────
-    const stateEl = document.getElementById('state') as HTMLElement | null;
+    // ── UI DOM REFS ───────────────────────────────────────────────────────────
+    const stateEl      = document.getElementById('state')         as HTMLElement | null;
     const joystickZone = document.getElementById('joystick-zone') as HTMLElement | null;
     const joystickBase = document.getElementById('joystick-base') as HTMLElement | null;
     const joystickKnob = document.getElementById('joystick-knob') as HTMLElement | null;
-    const hudEl = document.getElementById('hud') as HTMLElement | null;
+    const hudEl        = document.getElementById('hud')           as HTMLElement | null;
 
-    // Show HUD / joystick only AFTER the preloader finishes (now that we mount concurrently)
     const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
     const showUI = () => {
@@ -88,57 +77,48 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
       if (isTouch && joystickZone) joystickZone.style.display = 'flex';
     };
 
-    let isIntroActive = false;
-    let introStartTime = 0;
+    let isIntroActive    = false;
+    let introStartTime   = 0;
     let introInitialized = false;
-    const INTRO_DURATION = 4.5; // 4.5 seconds for a dynamic 360 sweep
+    const INTRO_DURATION = 4.5;
 
     const startIntro = () => {
-      isIntroActive = true;
+      isIntroActive    = true;
       introInitialized = false;
-      if (stateEl) stateEl.style.display = 'none';
-      if (hudEl) hudEl.style.display = 'none';
-      if (joystickZone) joystickZone.style.display = 'none';
+      if (stateEl)      stateEl.style.display      = 'none';
+      if (hudEl)        hudEl.style.display         = 'none';
+      if (joystickZone) joystickZone.style.display  = 'none';
     };
-
     window.addEventListener('start-experience', startIntro);
 
     // ── RENDERER ──────────────────────────────────────────────────────────────
-    const renderer = new THREE.WebGLRenderer({
-      antialias: true,
-      alpha: false, // Ensure no transparency lets the DOM show through
-    });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     let qualityProfile = qualityProfileFor('HIGH');
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, qualityProfile.pixelRatioCap));
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setClearColor(new THREE.Color(0x020205), 1); // Set clear color explicitly
-    renderer.shadowMap.enabled = qualityProfile.enableDynamicLights;
-    renderer.shadowMap.type = THREE.PCFShadowMap;
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.setClearColor(new THREE.Color(0x020205), 1);
+    renderer.shadowMap.enabled   = qualityProfile.enableDynamicLights;
+    renderer.shadowMap.type      = THREE.PCFShadowMap;
+    renderer.outputColorSpace    = THREE.SRGBColorSpace;
+    renderer.toneMapping         = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.24;
 
     const canvas = renderer.domElement;
     canvas.style.cssText = `
-      position: fixed;
-      top: 0; left: 0;
+      position: fixed; top: 0; left: 0;
       width: 100%; height: 100%;
-      z-index: 2;
-      touch-action: none;
-      display: block;
+      z-index: 2; touch-action: none; display: block;
     `;
-    // Prevent long-press context menu on mobile
     canvas.addEventListener('contextmenu', e => e.preventDefault());
     container.appendChild(canvas);
 
-    // ── SCENE + CAMERA ─────────────────────────────────────────────────────────
+    // ── SCENE + CAMERA ────────────────────────────────────────────────────────
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x0a1328);
     applyAtmosphereFog(scene, 0.0062);
 
-    const camera = new THREE.PerspectiveCamera(
-      60, window.innerWidth / window.innerHeight, 0.05, 300
-    );
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.05, 300);
+
     type PostFxRuntime = {
       composer: { render: () => void; setSize: (w: number, h: number) => void };
       setSize: (w: number, h: number) => void;
@@ -147,101 +127,99 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
     };
     let postFxRuntime: PostFxRuntime | null = null;
 
-    let camYaw = Math.PI;
+    let camYaw   = Math.PI;
     let camPitch = 0.1;
-    let camDist = CAM_DIST_DEFAULT;
+    let camDist  = CAM_DIST_DEFAULT;
     const camCurrent = new THREE.Vector3(0, 4, camDist);
 
-    const clampCamDist = (v: number) =>
-      Math.max(CAM_DIST_MIN, Math.min(CAM_DIST_MAX, v));
+    const clampCamDist = (v: number) => Math.max(CAM_DIST_MIN, Math.min(CAM_DIST_MAX, v));
 
     // ── LIGHTS ────────────────────────────────────────────────────────────────
     setupCinematicLights(scene, qualityProfile);
 
-    // ── ATMOSPHERIC FLOATERS / MODEL ENHANCEMENTS ────────────────────────────
-    const dustCount = Math.max(48, Math.floor(180 * qualityProfile.particleCountScale));
+    // ── FLOATING DUST ─────────────────────────────────────────────────────────
+    const dustCount    = Math.max(48, Math.floor(180 * qualityProfile.particleCountScale));
     const floatingDust = createFloatingDust(scene, dustCount);
     floatingDust.points.visible = qualityProfile.enableParticles;
+
     const enhancementState = createEnhancementState();
-    const characterAura = createCharacterAura(scene);
+    const characterAura    = createCharacterAura(scene);
 
     // ── MYSTICAL EMBERS ───────────────────────────────────────────────────────
-    const EMBER_COUNT = Math.max(1, Math.floor(900 * qualityProfile.particleCountScale));
+    // Reduced from 400 → 220 to cut per-frame typed-array work nearly in half
+    const EMBER_COUNT = Math.max(1, Math.floor(220 * qualityProfile.particleCountScale));
 
-    // Per-particle typed arrays (much faster than object arrays)
-    const ePos = new Float32Array(EMBER_COUNT * 3); // world positions
-    const eVel = new Float32Array(EMBER_COUNT * 3); // velocities
-    const eCol = new Float32Array(EMBER_COUNT * 3); // rendered colours (alpha baked in)
-    const eBase = new Float32Array(EMBER_COUNT * 3); // base colour before alpha
-    const eSz = new Float32Array(EMBER_COUNT);     // base sizes
-    const eLife = new Float32Array(EMBER_COUNT);     // elapsed lifetime (s)
-    const eMax = new Float32Array(EMBER_COUNT);     // total lifetime (s)
+    const ePos  = new Float32Array(EMBER_COUNT * 3);
+    const eVel  = new Float32Array(EMBER_COUNT * 3);
+    const eCol  = new Float32Array(EMBER_COUNT * 3);
+    const eBase = new Float32Array(EMBER_COUNT * 3);
+    const eSz   = new Float32Array(EMBER_COUNT);
+    const eLife = new Float32Array(EMBER_COUNT);
+    const eMax  = new Float32Array(EMBER_COUNT);
 
-    // Colour palette: deep space blues · electric cyan · nebula violet · ice white
     const PALETTE = [
-      new THREE.Color(0x00aaff), // electric blue
-      new THREE.Color(0x00ffee), // neon cyan
-      new THREE.Color(0x4466ff), // deep cobalt
-      new THREE.Color(0x88aaff), // soft periwinkle
-      new THREE.Color(0xcc88ff), // nebula violet
-      new THREE.Color(0xaaeeff), // ice shimmer
+      new THREE.Color(0x0077ff),
+      new THREE.Color(0x00e5ff),
+      new THREE.Color(0x00ccaa),
+      new THREE.Color(0x8844ff),
+      new THREE.Color(0xff0099),
+      new THREE.Color(0xff44cc),
+      new THREE.Color(0xff6644),
+      new THREE.Color(0xffffff),
+      new THREE.Color(0xaaddff),
     ];
 
     const resetEmber = (i: number, scatterStart = false) => {
-      const angle = Math.random() * Math.PI * 2;
-      const radius = Math.sqrt(Math.random()) * 46; // sqrt gives even disk spread
-      ePos[i * 3] = Math.cos(angle) * radius;
+      const angle  = Math.random() * Math.PI * 2;
+      const radius = Math.sqrt(Math.random()) * 44;
+      ePos[i * 3]     = Math.cos(angle) * radius;
       ePos[i * 3 + 1] = scatterStart ? Math.random() * 8 : 0.05 + Math.random() * 0.3;
       ePos[i * 3 + 2] = Math.sin(angle) * radius;
 
-      // Slow mystical rise with very gentle horizontal drift
-      eVel[i * 3] = (Math.random() - 0.5) * 0.18;
+      eVel[i * 3]     = (Math.random() - 0.5) * 0.18;
       eVel[i * 3 + 1] = 0.18 + Math.random() * 0.52;
       eVel[i * 3 + 2] = (Math.random() - 0.5) * 0.18;
 
-      eMax[i] = 7.0 + Math.random() * 9.0;
+      eMax[i]  = 7.0 + Math.random() * 9.0;
       eLife[i] = scatterStart ? Math.random() * eMax[i] : 0;
-      eSz[i] = 0.06 + Math.random() * 0.22;
+      eSz[i]   = 0.06 + Math.random() * 0.22;
 
       const c = PALETTE[Math.floor(Math.random() * PALETTE.length)].clone();
-      c.multiplyScalar(0.75 + Math.random() * 0.5); // slight brightness variation
-      eBase[i * 3] = c.r;
+      c.multiplyScalar(0.75 + Math.random() * 0.5);
+      eBase[i * 3]     = c.r;
       eBase[i * 3 + 1] = c.g;
       eBase[i * 3 + 2] = c.b;
-      eCol[i * 3] = c.r;
-      eCol[i * 3 + 1] = c.g;
-      eCol[i * 3 + 2] = c.b;
+      eCol[i * 3]      = c.r;
+      eCol[i * 3 + 1]  = c.g;
+      eCol[i * 3 + 2]  = c.b;
     };
 
-    // Initialise — stagger lifetimes so particles don't all burst at once
     for (let i = 0; i < EMBER_COUNT; i++) resetEmber(i, true);
 
-    const emberGeo = new THREE.BufferGeometry();
+    const emberGeo     = new THREE.BufferGeometry();
     const emberPosAttr = new THREE.BufferAttribute(ePos, 3);
     const emberColAttr = new THREE.BufferAttribute(eCol, 3);
-    const emberSzAttr = new THREE.BufferAttribute(eSz, 1);
+    const emberSzAttr  = new THREE.BufferAttribute(eSz, 1);
     emberGeo.setAttribute('position', emberPosAttr);
-    emberGeo.setAttribute('color', emberColAttr);
-    emberGeo.setAttribute('size', emberSzAttr);
+    emberGeo.setAttribute('color',    emberColAttr);
+    emberGeo.setAttribute('size',     emberSzAttr);
 
-    // Soft glowing disc sprite — drawn on a canvas so no texture file needed
     const spriteCanvas = document.createElement('canvas');
     spriteCanvas.width = spriteCanvas.height = 64;
     const sCtx = spriteCanvas.getContext('2d')!;
-    const grd = sCtx.createRadialGradient(32, 32, 0, 32, 32, 32);
-    // Bright white-blue core → electric cyan → deep violet halo → transparent
-    grd.addColorStop(0, 'rgba(220,240,255,1.0)');  // near-white ice core
-    grd.addColorStop(0.15, 'rgba(80,200,255,0.95)');  // electric sky blue
-    grd.addColorStop(0.38, 'rgba(40,100,255,0.55)');  // deep cobalt ring
-    grd.addColorStop(0.60, 'rgba(120,60,255,0.20)');  // violet nebula haze
-    grd.addColorStop(0.82, 'rgba(0,20,80,0.06)');     // deep space edge
-    grd.addColorStop(1, 'rgba(0,0,0,0)');
+    const grd  = sCtx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grd.addColorStop(0,    'rgba(220,240,255,1.0)');
+    grd.addColorStop(0.15, 'rgba(80,200,255,0.95)');
+    grd.addColorStop(0.38, 'rgba(40,100,255,0.55)');
+    grd.addColorStop(0.60, 'rgba(120,60,255,0.20)');
+    grd.addColorStop(0.82, 'rgba(0,20,80,0.06)');
+    grd.addColorStop(1,    'rgba(0,0,0,0)');
     sCtx.fillStyle = grd;
     sCtx.fillRect(0, 0, 64, 64);
     const spriteTex = new THREE.CanvasTexture(spriteCanvas);
 
     const emberMat = new THREE.PointsMaterial({
-      size: 0.5,   // slightly larger for a softer glow presence
+      size: 0.5,
       map: spriteTex,
       vertexColors: true,
       transparent: true,
@@ -252,18 +230,17 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
     });
 
     const emberPoints = new THREE.Points(emberGeo, emberMat);
-    emberPoints.renderOrder = 1; // draw after opaque geometry
+    emberPoints.renderOrder = 1;
     scene.add(emberPoints);
 
-    // ── INTERACTIVE 3D MARKERS ─────────────────────────────────────────────────
+    // ── INTERACTIVE 3D MARKERS ────────────────────────────────────────────────
     const markerPrompt = createMarkerPrompt();
     const { markers, beamGeo, chevronGeo, groundDiscGeo } = createSceneMarkers(scene, MARKER_DEFS);
-    let activeMarkerIdx = -1; // index of the marker the player is close to
+    let activeMarkerIdx = -1;
 
-    // E-key handler for marker activation
     const onMarkerActivate = () => {
       if (activeMarkerIdx < 0) return;
-      const m = markers[activeMarkerIdx];
+      const m  = markers[activeMarkerIdx];
       const dx = charPos.x - m.pos.x;
       const dz = charPos.z - m.pos.z;
       if (Math.sqrt(dx * dx + dz * dz) <= MARKER_ACTIVATE_RADIUS) {
@@ -273,56 +250,47 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
 
     const onMarkerKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'e' || e.key === 'E') {
-        // If a page overlay is currently open, close it and return to the scene
-        if (activePageRef.current) {
-          onCloseRef.current?.();
-        } else {
-          onMarkerActivate();
-        }
+        if (activePageRef.current) onCloseRef.current?.();
+        else onMarkerActivate();
       }
     };
     window.addEventListener('keydown', onMarkerKeyDown);
 
-    // Tap-to-activate on mobile (double-tap near marker prompt)
-    const onMarkerTap = () => {
-      if (activeMarkerIdx >= 0) onMarkerActivate();
-    };
+    const onMarkerTap = () => { if (activeMarkerIdx >= 0) onMarkerActivate(); };
     markerPrompt.style.pointerEvents = 'auto';
     markerPrompt.addEventListener('click', onMarkerTap);
 
     // ── NEON GRID FLOOR ───────────────────────────────────────────────────────
-    const surfaceGeo = new THREE.PlaneGeometry(300, 300, 1, 1);
+    const surfaceGeo    = new THREE.PlaneGeometry(300, 300, 1, 1);
     const shaderGridMat = createNeonGridMaterial();
-    const basicGridMat = new THREE.MeshBasicMaterial({
-      color: new THREE.Color(0x37215f),
-    });
-    let gridUsesShader = qualityProfile.enableShaderGrid;
+    const basicGridMat  = new THREE.MeshBasicMaterial({ color: new THREE.Color(0x37215f) });
+    let gridUsesShader  = qualityProfile.enableShaderGrid;
     let surfaceMat: THREE.Material = gridUsesShader ? shaderGridMat : basicGridMat;
 
     const neonSurface = new THREE.Mesh(surfaceGeo, surfaceMat);
-    neonSurface.rotation.x = -Math.PI / 2;
-    neonSurface.position.y = GROUND_Y + 0.01; // Slightly above ground to prevent z-fight with map
-    neonSurface.receiveShadow = false; // Disable shadow reception so it doesn't darken the neon lines
+    neonSurface.rotation.x   = -Math.PI / 2;
+    neonSurface.position.y   = GROUND_Y + 0.01;
+    neonSurface.receiveShadow = false;
     scene.add(neonSurface);
 
     const applyQualityProfile = (nextProfile: QualityProfile) => {
       qualityProfile = nextProfile;
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, qualityProfile.pixelRatioCap));
       renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.shadowMap.enabled = qualityProfile.enableDynamicLights;
+      renderer.shadowMap.enabled     = qualityProfile.enableDynamicLights;
       renderer.shadowMap.needsUpdate = true;
-      renderer.toneMappingExposure = 1.24;
+      renderer.toneMappingExposure   = 1.24;
       applyAtmosphereFog(scene, 0.0062);
 
       const shouldUseShader = qualityProfile.enableShaderGrid;
       if (shouldUseShader !== gridUsesShader) {
-        gridUsesShader = shouldUseShader;
-        surfaceMat = gridUsesShader ? shaderGridMat : basicGridMat;
+        gridUsesShader       = shouldUseShader;
+        surfaceMat           = gridUsesShader ? shaderGridMat : basicGridMat;
         neonSurface.material = surfaceMat;
       }
 
-      emberPoints.visible = qualityProfile.enableParticles;
-      ssObj.visible = qualityProfile.enableParticles;
+      emberPoints.visible         = qualityProfile.enableParticles;
+      ssObj.visible               = qualityProfile.enableParticles;
       floatingDust.points.visible = qualityProfile.enableParticles;
 
       if (postFxRuntime) {
@@ -331,88 +299,74 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
       }
     };
 
-    // ── STARS (SKY) ────────────────────────────────────────────────────────
+    // ── STARS (SKY) ───────────────────────────────────────────────────────────
     const STARS_COUNT = 3000;
-    const sPos = new Float32Array(STARS_COUNT * 3);
+    const sPos     = new Float32Array(STARS_COUNT * 3);
     const sBaseCol = new Float32Array(STARS_COUNT * 3);
-    const sPhase = new Float32Array(STARS_COUNT); // random phase for twinkling
-    const sSz = new Float32Array(STARS_COUNT);
+    const sPhase   = new Float32Array(STARS_COUNT);
+    const sSz      = new Float32Array(STARS_COUNT);
 
     for (let i = 0; i < STARS_COUNT; i++) {
       const radius = 120 + Math.random() * 80;
-      const u = Math.random();
-      const v = Math.random();
-      const theta = 2 * Math.PI * u;
-      const phi = Math.acos(v); // 0 to pi/2 (upper half)
+      const theta  = 2 * Math.PI * Math.random();
+      const phi    = Math.acos(Math.random());
 
-      sPos[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
-      sPos[i * 3 + 1] = radius * Math.cos(phi) - 10; // raised slightly
+      sPos[i * 3]     = radius * Math.sin(phi) * Math.cos(theta);
+      sPos[i * 3 + 1] = radius * Math.cos(phi) - 10;
       sPos[i * 3 + 2] = radius * Math.sin(phi) * Math.sin(theta);
 
       const intensity = 0.5 + Math.random() * 0.5;
       const colorType = Math.random();
       const c = new THREE.Color(0xffffff);
-      if (colorType > 0.8) c.setHex(0xaaaaFF);
+      if      (colorType > 0.8) c.setHex(0xaaaaFF);
       else if (colorType > 0.6) c.setHex(0xffddaa);
 
-      sBaseCol[i * 3] = c.r * intensity;
+      sBaseCol[i * 3]     = c.r * intensity;
       sBaseCol[i * 3 + 1] = c.g * intensity;
       sBaseCol[i * 3 + 2] = c.b * intensity;
 
       sPhase[i] = Math.random() * Math.PI * 2;
-      sSz[i] = 2.0 + Math.random() * 4.0; // doubled size so they show up easily
+      sSz[i]    = 2.0 + Math.random() * 4.0;
     }
 
     const starsGeo = new THREE.BufferGeometry();
     starsGeo.setAttribute('position', new THREE.BufferAttribute(sPos, 3));
-    starsGeo.setAttribute('color', new THREE.BufferAttribute(sBaseCol, 3));
-    starsGeo.setAttribute('phase', new THREE.BufferAttribute(sPhase, 1));
-    starsGeo.setAttribute('size', new THREE.BufferAttribute(sSz, 1));
+    starsGeo.setAttribute('color',    new THREE.BufferAttribute(sBaseCol, 3));
+    starsGeo.setAttribute('phase',    new THREE.BufferAttribute(sPhase, 1));
+    starsGeo.setAttribute('size',     new THREE.BufferAttribute(sSz, 1));
 
     const starCanvas = document.createElement('canvas');
     starCanvas.width = starCanvas.height = 32;
     const starCtx = starCanvas.getContext('2d')!;
     const starGrd = starCtx.createRadialGradient(16, 16, 0, 16, 16, 16);
-    starGrd.addColorStop(0, 'rgba(255,255,255,1)');
+    starGrd.addColorStop(0,   'rgba(255,255,255,1)');
     starGrd.addColorStop(0.2, 'rgba(255,255,255,0.8)');
     starGrd.addColorStop(0.5, 'rgba(255,255,255,0.2)');
-    starGrd.addColorStop(1, 'rgba(255,255,255,0)');
+    starGrd.addColorStop(1,   'rgba(255,255,255,0)');
     starCtx.fillStyle = starGrd;
     starCtx.fillRect(0, 0, 32, 32);
     const starTex = new THREE.CanvasTexture(starCanvas);
 
     const starsMat = new THREE.ShaderMaterial({
-      uniforms: {
-        time: { value: 0 },
-        starTexture: { value: starTex }
-      },
+      uniforms: { time: { value: 0 }, starTexture: { value: starTex } },
       vertexShader: `
-        attribute float phase;
-        attribute float size;
-        attribute vec3 color;
-        varying vec3 vColor;
-        varying float vAlpha;
-        uniform float time;
+        attribute float phase; attribute float size; attribute vec3 color;
+        varying vec3 vColor; varying float vAlpha; uniform float time;
         void main() {
           vColor = color;
-          // Twinkle effect
           vAlpha = 0.5 + 0.5 * sin(time * 2.0 + phase);
-          // Glitch / fast flicker for some stars
-          if (fract(phase * 12.3) > 0.9) {
-              vAlpha *= 0.5 + 0.5 * sin(time * 15.0 + phase * 100.0);
-          }
+          if (fract(phase * 12.3) > 0.9)
+            vAlpha *= 0.5 + 0.5 * sin(time * 15.0 + phase * 100.0);
           vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
           gl_PointSize = size * (300.0 / -mvPosition.z) * (0.5 + vAlpha * 0.5);
-          gl_Position = projectionMatrix * mvPosition;
+          gl_Position  = projectionMatrix * mvPosition;
         }
       `,
       fragmentShader: `
-        uniform sampler2D starTexture;
-        varying vec3 vColor;
-        varying float vAlpha;
+        uniform sampler2D starTexture; varying vec3 vColor; varying float vAlpha;
         void main() {
           vec4 texColor = texture2D(starTexture, gl_PointCoord);
-          gl_FragColor = vec4(vColor * vAlpha * texColor.rgb, texColor.a * vAlpha);
+          gl_FragColor  = vec4(vColor * vAlpha * texColor.rgb, texColor.a * vAlpha);
         }
       `,
       transparent: true,
@@ -422,7 +376,7 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
     });
 
     const starsObj = new THREE.Points(starsGeo, starsMat);
-    starsObj.renderOrder = -1; // Draw *first* over the background, before other transparent things
+    starsObj.renderOrder = -1;
     scene.add(starsObj);
 
     // ── SHOOTING STARS ────────────────────────────────────────────────────────
@@ -436,60 +390,41 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
       if (i % 3 === 1) ssPos[i] = -1000;
     }
 
-    type SSData = { active: boolean, pos: THREE.Vector3, dir: THREE.Vector3, speed: number, length: number, age: number, maxAge: number };
-    const ssData: SSData[] = [];
-    for (let i = 0; i < MAX_SHOOTING_STARS; i++) {
-      ssData.push({
-        active: false,
-        pos: new THREE.Vector3(),
-        dir: new THREE.Vector3(),
-        speed: 0,
-        length: 0,
-        age: 0,
-        maxAge: 0,
-      });
-    }
+    type SSData = {
+      active: boolean; pos: THREE.Vector3; dir: THREE.Vector3;
+      speed: number; length: number; age: number; maxAge: number;
+    };
+    const ssData: SSData[] = Array.from({ length: MAX_SHOOTING_STARS }, () => ({
+      active: false, pos: new THREE.Vector3(), dir: new THREE.Vector3(),
+      speed: 0, length: 0, age: 0, maxAge: 0,
+    }));
 
     ssGeo.setAttribute('position', new THREE.BufferAttribute(ssPos, 3));
-    ssGeo.setAttribute('color', new THREE.BufferAttribute(ssCol, 3));
+    ssGeo.setAttribute('color',    new THREE.BufferAttribute(ssCol, 3));
 
     const ssMat = new THREE.LineBasicMaterial({
-      vertexColors: true,
-      transparent: true,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      linewidth: 2, // Depending on WebGL implementation...
+      vertexColors: true, transparent: true,
+      blending: THREE.AdditiveBlending, depthWrite: false, linewidth: 2,
     });
-
     const ssObj = new THREE.LineSegments(ssGeo, ssMat);
     ssObj.renderOrder = -1;
     scene.add(ssObj);
 
     const resetShootingStar = (index: number) => {
-      const d = ssData[index];
-      d.active = true;
-      const r = 120 + Math.random() * 50;
+      const d     = ssData[index];
+      d.active    = true;
+      const r     = 120 + Math.random() * 50;
       const theta = Math.random() * Math.PI * 2;
-      const phi = Math.random() * Math.PI * 0.25 + 0.05;
-      d.pos.set(
-        r * Math.sin(phi) * Math.cos(theta),
-        r * Math.cos(phi),
-        r * Math.sin(phi) * Math.sin(theta)
-      );
-      d.dir.set(
-        (Math.random() - 0.5) * 2,
-        -Math.random() * 0.2 - 0.05,
-        (Math.random() - 0.5) * 2
-      ).normalize();
-
-      d.speed = 150 + Math.random() * 100;
-      d.length = 15 + Math.random() * 25;
-      d.age = 0;
+      const phi   = Math.random() * Math.PI * 0.25 + 0.05;
+      d.pos.set(r * Math.sin(phi) * Math.cos(theta), r * Math.cos(phi), r * Math.sin(phi) * Math.sin(theta));
+      d.dir.set((Math.random() - 0.5) * 2, -Math.random() * 0.2 - 0.05, (Math.random() - 0.5) * 2).normalize();
+      d.speed  = 150 + Math.random() * 100;
+      d.length = 15  + Math.random() * 25;
+      d.age    = 0;
       d.maxAge = 0.5 + Math.random() * 0.8;
-
       const i3 = index * 6;
-      ssCol[i3] = 1; ssCol[i3 + 1] = 1; ssCol[i3 + 2] = 1;
-      ssCol[i3 + 3] = 0; ssCol[i3 + 4] = 0; ssCol[i3 + 5] = 0;
+      ssCol[i3] = 1; ssCol[i3+1] = 1; ssCol[i3+2] = 1;
+      ssCol[i3+3] = 0; ssCol[i3+4] = 0; ssCol[i3+5] = 0;
     };
 
     applyQualityProfile(qualityProfile);
@@ -506,43 +441,30 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
       if (isIntroActive) return;
       camDist = clampCamDist(camDist + e.deltaY * 0.02);
     };
-
     window.addEventListener('resize', onResize);
-    // Orientation change fires before innerWidth/Height updates on iOS
     window.addEventListener('orientationchange', onOrientationChange);
+    window.addEventListener('wheel', onWheel, { passive: true });
 
     // ── KEYBOARD INPUT ────────────────────────────────────────────────────────
     const keys = createMovementKeys();
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      updateMovementKey(keys, e.key, true);
-    };
-    const onKeyUp = (e: KeyboardEvent) => {
-      updateMovementKey(keys, e.key, false);
-    };
+    const onKeyDown = (e: KeyboardEvent) => updateMovementKey(keys, e.key, true);
+    const onKeyUp   = (e: KeyboardEvent) => updateMovementKey(keys, e.key, false);
     window.addEventListener('keydown', onKeyDown);
-    window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('keyup',   onKeyUp);
 
-    // ── SCROLL ZOOM ───────────────────────────────────────────────────────────
-    window.addEventListener('wheel', onWheel, { passive: true });
-
-    // ── MOUSE DRAG (all on window — avoids React event blocking) ─────────────
+    // ── MOUSE DRAG ────────────────────────────────────────────────────────────
     let isDragging = false;
     let lastMX = 0, lastMY = 0;
-
-    const onMouseDown = (e: MouseEvent) => {
-      isDragging = true; lastMX = e.clientX; lastMY = e.clientY;
-    };
-    const onMouseUp = () => { isDragging = false; };
+    const onMouseDown = (e: MouseEvent) => { isDragging = true; lastMX = e.clientX; lastMY = e.clientY; };
+    const onMouseUp   = () => { isDragging = false; };
     const onMouseMove = (e: MouseEvent) => {
       if (!isDragging || isIntroActive) return;
-      camYaw -= (e.clientX - lastMX) * 0.004;
-      camPitch = Math.max(CAM_PITCH_MIN, Math.min(CAM_PITCH_MAX,
-        camPitch + (e.clientY - lastMY) * 0.004));
+      camYaw  -= (e.clientX - lastMX) * 0.004;
+      camPitch = Math.max(CAM_PITCH_MIN, Math.min(CAM_PITCH_MAX, camPitch + (e.clientY - lastMY) * 0.004));
       lastMX = e.clientX; lastMY = e.clientY;
     };
     window.addEventListener('mousedown', onMouseDown);
-    window.addEventListener('mouseup', onMouseUp);
+    window.addEventListener('mouseup',   onMouseUp);
     window.addEventListener('mousemove', onMouseMove);
 
     // ── MOBILE JOYSTICK ───────────────────────────────────────────────────────
@@ -558,17 +480,16 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
     };
 
     const moveKnob = (dx: number, dy: number) => {
-      const len = Math.sqrt(dx * dx + dy * dy);
+      const len     = Math.sqrt(dx * dx + dy * dy);
       const clamped = Math.min(len, JOY_MAX);
-      const angle = Math.atan2(dy, dx);
+      const angle   = Math.atan2(dy, dx);
       const kx = Math.cos(angle) * clamped;
       const ky = Math.sin(angle) * clamped;
       if (joystickKnob) {
-        joystickKnob.style.transform =
-          `translate(calc(-50% + ${kx}px), calc(-50% + ${ky}px))`;
+        joystickKnob.style.transform = `translate(calc(-50% + ${kx}px), calc(-50% + ${ky}px))`;
         joystickKnob.classList.add('active');
       }
-      joyMag = Math.min(len / JOY_MAX, 1.0);
+      joyMag   = Math.min(len / JOY_MAX, 1.0);
       joyVec.x = kx / JOY_MAX;
       joyVec.y = ky / JOY_MAX;
     };
@@ -599,69 +520,47 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
       for (const t of Array.from(list)) if (t.identifier === id) return t;
       return null;
     };
-
     const isOverJoystick = (t: Touch): boolean => {
       if (!joystickZone) return false;
       const r = joystickZone.getBoundingClientRect();
-      return t.clientX >= r.left && t.clientX <= r.right &&
-        t.clientY >= r.top && t.clientY <= r.bottom;
+      return t.clientX >= r.left && t.clientX <= r.right && t.clientY >= r.top && t.clientY <= r.bottom;
     };
 
-    // Joystick zone: non-passive so we can preventDefault (stops bleeding to camera)
     const onJoyTouchStart = (e: TouchEvent) => {
       e.preventDefault();
       for (const t of Array.from(e.changedTouches)) {
-        if (joyId === null) {
-          joyId = t.identifier;
-          const c = joyCenter();
-          moveKnob(t.clientX - c.x, t.clientY - c.y);
-        }
+        if (joyId === null) { joyId = t.identifier; const c = joyCenter(); moveKnob(t.clientX - c.x, t.clientY - c.y); }
       }
     };
     joystickZone?.addEventListener('touchstart', onJoyTouchStart, { passive: false });
 
-    // Global touchstart — camera and pinch (passive: true required on modern browsers)
     const onTouchStart = (e: TouchEvent) => {
       for (const t of Array.from(e.changedTouches)) {
         if (isOverJoystick(t)) continue;
-
         if (camTouchId !== null && pinchId2 === null) {
           pinchId2 = t.identifier;
           const prev = getTouchById(e.touches, camTouchId);
-          if (prev) {
-            const dx = t.clientX - prev.clientX;
-            const dy = t.clientY - prev.clientY;
-            pinchDist = Math.sqrt(dx * dx + dy * dy);
-          }
-        } else if (camTouchId === null) {
-          camTouchId = t.identifier;
-          lastCamTX = t.clientX;
-          lastCamTY = t.clientY;
-        }
+          if (prev) { const dx = t.clientX - prev.clientX; const dy = t.clientY - prev.clientY; pinchDist = Math.sqrt(dx*dx+dy*dy); }
+        } else if (camTouchId === null) { camTouchId = t.identifier; lastCamTX = t.clientX; lastCamTY = t.clientY; }
       }
     };
 
     const onTouchMove = (e: TouchEvent) => {
       for (const t of Array.from(e.changedTouches)) {
-        if (t.identifier === joyId) {
-          const c = joyCenter();
-          moveKnob(t.clientX - c.x, t.clientY - c.y);
-        } else if (t.identifier === camTouchId && pinchId2 === null && !isIntroActive) {
-          camYaw -= (t.clientX - lastCamTX) * 0.004;
-          camPitch = Math.max(CAM_PITCH_MIN, Math.min(CAM_PITCH_MAX,
-            camPitch + (t.clientY - lastCamTY) * 0.004));
+        if (t.identifier === joyId) { const c = joyCenter(); moveKnob(t.clientX - c.x, t.clientY - c.y); }
+        else if (t.identifier === camTouchId && pinchId2 === null && !isIntroActive) {
+          camYaw  -= (t.clientX - lastCamTX) * 0.004;
+          camPitch = Math.max(CAM_PITCH_MIN, Math.min(CAM_PITCH_MAX, camPitch + (t.clientY - lastCamTY) * 0.004));
           lastCamTX = t.clientX; lastCamTY = t.clientY;
         }
       }
-      // Pinch to zoom
       if (pinchId2 !== null && e.touches.length >= 2 && !isIntroActive) {
         const tA = getTouchById(e.touches, camTouchId!);
         const tB = getTouchById(e.touches, pinchId2);
         if (tA && tB) {
-          const dx = tA.clientX - tB.clientX;
-          const dy = tA.clientY - tB.clientY;
-          const d = Math.sqrt(dx * dx + dy * dy);
-          camDist = clampCamDist(camDist - (d - pinchDist) * 0.04);
+          const dx = tA.clientX - tB.clientX; const dy = tA.clientY - tB.clientY;
+          const d  = Math.sqrt(dx*dx+dy*dy);
+          camDist   = clampCamDist(camDist - (d - pinchDist) * 0.04);
           pinchDist = d;
         }
       }
@@ -669,119 +568,102 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
 
     const onTouchEndCancel = (e: TouchEvent) => {
       for (const t of Array.from(e.changedTouches)) {
-        if (t.identifier === joyId) releaseJoy();
+        if (t.identifier === joyId)      releaseJoy();
         if (t.identifier === camTouchId) { camTouchId = null; pinchId2 = null; }
-        if (t.identifier === pinchId2) pinchId2 = null;
+        if (t.identifier === pinchId2)   pinchId2 = null;
       }
     };
 
-    window.addEventListener('touchstart', onTouchStart, { passive: true });
-    window.addEventListener('touchmove', onTouchMove, { passive: true });
-    window.addEventListener('touchend', onTouchEndCancel, { passive: true });
+    window.addEventListener('touchstart',  onTouchStart,     { passive: true });
+    window.addEventListener('touchmove',   onTouchMove,      { passive: true });
+    window.addEventListener('touchend',    onTouchEndCancel, { passive: true });
     window.addEventListener('touchcancel', onTouchEndCancel, { passive: true });
 
-    // ── CHARACTER STATE (3-armature system from main.js) ──────────────────────
+    // ── CHARACTER STATE ───────────────────────────────────────────────────────
     const armatures: THREE.Object3D[] = [];
-    const mixers: THREE.AnimationMixer[] = [];
+    const mixers:    THREE.AnimationMixer[] = [];
     let stateIdx = STATE_IDLE;
     const charPos = new THREE.Vector3(0, GROUND_Y, 0);
-    let charRotY = 0;
-    let charH = 1.8;
+    let charRotY  = 0;
+    let charH     = 1.8;
 
     const setCharState = (idx: number) => {
       if (idx === stateIdx || armatures.length === 0) return;
       armatures[stateIdx].visible = false;
-      armatures[idx].visible = true;
+      armatures[idx].visible      = true;
       stateIdx = idx;
-      if (stateEl) {
-        stateEl.textContent = STATE_NAMES[idx];
-        stateEl.style.color = STATE_COLORS[idx];
-      }
+      if (stateEl) { stateEl.textContent = STATE_NAMES[idx]; stateEl.style.color = STATE_COLORS[idx]; }
     };
 
     const applyCharTransform = () => {
-      for (const arm of armatures) {
-        arm.position.copy(charPos);
-        arm.rotation.y = charRotY;
-      }
+      for (const arm of armatures) { arm.position.copy(charPos); arm.rotation.y = charRotY; }
     };
 
     // ── RENDER LOOP ───────────────────────────────────────────────────────────
-    const timer = new THREE.Timer();
-    const moveDir = new THREE.Vector3();
-    const camFwd = new THREE.Vector3();
+    const timer    = new THREE.Timer();
+    const moveDir  = new THREE.Vector3();
+    const camFwd   = new THREE.Vector3();
     const camRight = new THREE.Vector3();
-    const UP = new THREE.Vector3(0, 1, 0);
+    const UP       = new THREE.Vector3(0, 1, 0);
+
+    // ── Pre-allocated scratch vectors — never allocate inside tick() ──────────
+    const _lookAt     = new THREE.Vector3();
+    const _camDesired = new THREE.Vector3();
+    const _ssTail     = new THREE.Vector3();
+
     let animFrameId = 0;
 
     const tick = () => {
       animFrameId = requestAnimationFrame(tick);
       timer.update();
-      const dt = Math.min(timer.getDelta(), 0.05);
+      const dt      = Math.min(timer.getDelta(), 0.05);
       const elapsed = timer.getElapsed();
 
-      // Update animation mixers
       for (const mx of mixers) mx.update(dt);
 
+      // ── INTRO ───────────────────────────────────────────────────────────────
       if (isIntroActive) {
-        if (!introInitialized) {
-          introStartTime = elapsed;
-          introInitialized = true;
-        }
+        if (!introInitialized) { introStartTime = elapsed; introInitialized = true; }
         const introElapsed = elapsed - introStartTime;
         if (introElapsed >= INTRO_DURATION) {
           isIntroActive = false;
           showUI();
-          camYaw = Math.PI;
-          camPitch = 0.1;
-          camDist = CAM_DIST_DEFAULT;
+          camYaw = Math.PI; camPitch = 0.1; camDist = CAM_DIST_DEFAULT;
         } else {
-          // Smooth progress
           const progress = introElapsed / INTRO_DURATION;
-          // Cubic ease-in-out
-          const eased = progress < 0.5 ? 4 * progress * progress * progress : 1 - Math.pow(-2 * progress + 2, 3) / 2;
-
-          camYaw = Math.PI - eased * Math.PI * 2; // spin 360 clockwise
-          camPitch = 0.1 + Math.sin(progress * Math.PI) * 0.3; // dip down, then up
-          camDist = CAM_DIST_DEFAULT + Math.sin(progress * Math.PI) * 12; // zoom out, then in
+          const eased    = progress < 0.5 ? 4*progress*progress*progress : 1 - Math.pow(-2*progress+2, 3) / 2;
+          camYaw   = Math.PI - eased * Math.PI * 2;
+          camPitch = 0.1 + Math.sin(progress * Math.PI) * 0.3;
+          camDist  = CAM_DIST_DEFAULT + Math.sin(progress * Math.PI) * 12;
         }
       }
 
-      // Input — keyboard overrides joystick
-      let inputX = 0, inputY = 0;
-      let moving = false, sprint = false;
-
+      // ── INPUT ───────────────────────────────────────────────────────────────
+      let inputX = 0, inputY = 0, moving = false, sprint = false;
       if (!isIntroActive) {
         const kbX = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
         const kbY = (keys.w ? 1 : 0) - (keys.s ? 1 : 0);
         inputX = kbX !== 0 ? kbX : joyVec.x;
         inputY = kbY !== 0 ? kbY : -joyVec.y;
         moving = (inputX * inputX + inputY * inputY) > 0.0025;
-
         const joySprint = joyMag >= SPRINT_THRESHOLD;
         sprint = moving && (keys.shift || joySprint);
         if (joyId !== null) setJoySprintVisual(joySprint);
       }
 
-      if (armatures.length > 0) {
-        setCharState(moving ? (sprint ? STATE_RUN : STATE_WALK) : STATE_IDLE);
-      }
+      if (armatures.length > 0) setCharState(moving ? (sprint ? STATE_RUN : STATE_WALK) : STATE_IDLE);
 
+      // ── CHARACTER MOVEMENT ───────────────────────────────────────────────────
       if (moving) {
         const speed = sprint ? RUN_SPEED : WALK_SPEED;
-
         camFwd.set(-Math.sin(camYaw), 0, -Math.cos(camYaw)).normalize();
         camRight.crossVectors(camFwd, UP).normalize();
-
-        moveDir.set(0, 0, 0)
-          .addScaledVector(camFwd, inputY)
-          .addScaledVector(camRight, inputX);
+        moveDir.set(0, 0, 0).addScaledVector(camFwd, inputY).addScaledVector(camRight, inputX);
         if (moveDir.lengthSq() > 0.0001) moveDir.normalize();
 
         const nx = charPos.x + moveDir.x * speed * dt;
         const nz = charPos.z + moveDir.z * speed * dt;
         const distSq = nx * nx + nz * nz;
-
         if (distSq <= BOUNDARY_RADIUS * BOUNDARY_RADIUS) {
           charPos.x = nx; charPos.z = nz;
         } else {
@@ -791,20 +673,20 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
         }
         charPos.y = GROUND_Y;
 
-        // Smooth character rotation
         const targetA = Math.atan2(moveDir.x, moveDir.z);
         let diff = targetA - charRotY;
-        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff >  Math.PI) diff -= Math.PI * 2;
         while (diff < -Math.PI) diff += Math.PI * 2;
         charRotY += diff * Math.min(TURN_SPEED * dt, 1.0);
+      }
 
-        // Camera rotation is solely manual now. No auto-follow.
-        // if (!isDragging && camTouchId === null) {
-        //   let yd = (charRotY + Math.PI) - camYaw;
-        //   while (yd > Math.PI) yd -= Math.PI * 2;
-        //   while (yd < -Math.PI) yd += Math.PI * 2;
-        //   camYaw += yd * 0.04;
-        // }
+      // ── AUTO-ROTATE CAMERA BEHIND CHARACTER ──────────────────────────────────
+      if (moving && !isDragging && camTouchId === null && !isIntroActive) {
+        const targetCamYaw = charRotY + Math.PI;
+        let yawDiff = targetCamYaw - camYaw;
+        while (yawDiff >  Math.PI) yawDiff -= Math.PI * 2;
+        while (yawDiff < -Math.PI) yawDiff += Math.PI * 2;
+        camYaw += yawDiff * Math.min(3.0 * dt, 1.0);
       }
 
       if (armatures.length > 0) {
@@ -814,194 +696,142 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
         characterAura.update(charPos, elapsed);
       }
 
-      if (qualityProfile.enableParticles) {
-        floatingDust.update(dt, charPos);
-      }
+      if (qualityProfile.enableParticles) floatingDust.update(dt, charPos);
       updateModelEnhancements(enhancementState, elapsed);
 
-      // ── UPDATE STARS ────────────────────────────────────────────────────────
+      // ── STARS ─────────────────────────────────────────────────────────────────
       starsMat.uniforms.time.value += dt;
-      starsObj.position.x = camCurrent.x * 0.03;
-      starsObj.position.z = camCurrent.z * 0.03;
+      starsObj.position.x  = camCurrent.x * 0.03;
+      starsObj.position.z  = camCurrent.z * 0.03;
       starsObj.rotation.y += dt * 0.015;
 
-      // ── UPDATE NEON GRID ────────────────────────────────────────────────────
-      if (gridUsesShader && surfaceMat instanceof THREE.ShaderMaterial && surfaceMat.uniforms.time) {
-        surfaceMat.uniforms.time.value += dt;
+      // ── NEON GRID ─────────────────────────────────────────────────────────────
+      if (gridUsesShader && surfaceMat instanceof THREE.ShaderMaterial && surfaceMat.uniforms.uTime) {
+        surfaceMat.uniforms.uTime.value += dt;
       }
 
-      // ── UPDATE SHOOTING STARS ─────────────────────────────────────────────────
+      // ── SHOOTING STARS ────────────────────────────────────────────────────────
       if (qualityProfile.enableParticles) {
         for (let i = 0; i < MAX_SHOOTING_STARS; i++) {
           const d = ssData[i];
-          if (!d.active) {
-            if (Math.random() < 0.015) {
-              resetShootingStar(i);
-            }
-            continue;
-          }
-
+          if (!d.active) { if (Math.random() < 0.015) resetShootingStar(i); continue; }
           d.age += dt;
           if (d.age >= d.maxAge) {
             d.active = false;
-            ssPos[i * 6] = 0; ssPos[i * 6 + 1] = -1000; ssPos[i * 6 + 2] = 0;
-            ssPos[i * 6 + 3] = 0; ssPos[i * 6 + 4] = -1000; ssPos[i * 6 + 5] = 0;
+            ssPos[i*6]=0; ssPos[i*6+1]=-1000; ssPos[i*6+2]=0;
+            ssPos[i*6+3]=0; ssPos[i*6+4]=-1000; ssPos[i*6+5]=0;
             continue;
           }
-
           d.pos.addScaledVector(d.dir, d.speed * dt);
-
-          const head = d.pos;
-          const tail = d.pos.clone().addScaledVector(d.dir, -d.length);
-
+          // Re-use _ssTail instead of d.pos.clone() — eliminates per-frame allocation
+          _ssTail.copy(d.pos).addScaledVector(d.dir, -d.length);
           const idx = i * 6;
-          ssPos[idx] = head.x; ssPos[idx + 1] = head.y; ssPos[idx + 2] = head.z;
-          ssPos[idx + 3] = tail.x; ssPos[idx + 4] = tail.y; ssPos[idx + 5] = tail.z;
-
+          ssPos[idx]   = d.pos.x; ssPos[idx+1] = d.pos.y; ssPos[idx+2] = d.pos.z;
+          ssPos[idx+3] = _ssTail.x; ssPos[idx+4] = _ssTail.y; ssPos[idx+5] = _ssTail.z;
           let alpha = 1.0;
-          if (d.age > d.maxAge - 0.2) alpha = (d.maxAge - d.age) / 0.2;
-          else if (d.age < 0.2) alpha = d.age / 0.2;
-
-          ssCol[idx] = alpha; ssCol[idx + 1] = alpha; ssCol[idx + 2] = alpha;
+          if      (d.age > d.maxAge - 0.2) alpha = (d.maxAge - d.age) / 0.2;
+          else if (d.age < 0.2)            alpha = d.age / 0.2;
+          ssCol[idx]=alpha; ssCol[idx+1]=alpha; ssCol[idx+2]=alpha;
         }
         ssGeo.attributes.position.needsUpdate = true;
-        ssGeo.attributes.color.needsUpdate = true;
+        ssGeo.attributes.color.needsUpdate    = true;
       }
 
-      // ── UPDATE EMBERS ───────────────────────────────────────────────────────
+      // ── EMBERS ────────────────────────────────────────────────────────────────
       if (qualityProfile.enableParticles) {
         for (let i = 0; i < EMBER_COUNT; i++) {
           eLife[i] += dt;
           if (eLife[i] >= eMax[i]) { resetEmber(i, false); continue; }
-
-          const t = eLife[i] / eMax[i]; // 0 = just born, 1 = dying
-
-          // Slow sinusoidal horizontal wobble — lazy, dreamlike drift
+          const t      = eLife[i] / eMax[i];
           const wobble = Math.sin(eLife[i] * 1.1 + i * 0.37) * 0.006;
-
-          ePos[i * 3] += (eVel[i * 3] + wobble) * dt;
-          ePos[i * 3 + 1] += eVel[i * 3 + 1] * dt * (1 - t * 0.15); // barely decelerates
-          ePos[i * 3 + 2] += (eVel[i * 3 + 2] + wobble) * dt;
-
-          // Fade: gentle fade-in → long luminous hold → slow fade-out
-          const alpha = t < 0.10
-            ? t / 0.10
-            : t > 0.75
-              ? 1 - (t - 0.75) / 0.25
-              : 1.0;
-
-          eCol[i * 3] = eBase[i * 3] * alpha;
-          eCol[i * 3 + 1] = eBase[i * 3 + 1] * alpha;
-          eCol[i * 3 + 2] = eBase[i * 3 + 2] * alpha;
-
-          // Smooth size taper — no flicker, just slow shrink
+          ePos[i*3]   += (eVel[i*3]   + wobble) * dt;
+          ePos[i*3+1] +=  eVel[i*3+1] * dt * (1 - t * 0.15);
+          ePos[i*3+2] += (eVel[i*3+2] + wobble) * dt;
+          const alpha = t < 0.10 ? t / 0.10 : t > 0.75 ? 1 - (t - 0.75) / 0.25 : 1.0;
+          eCol[i*3]   = eBase[i*3]   * alpha;
+          eCol[i*3+1] = eBase[i*3+1] * alpha;
+          eCol[i*3+2] = eBase[i*3+2] * alpha;
           eSz[i] = eSz[i] * 0.998 + (0.04 + 0.14 * (1 - t)) * 0.002;
         }
         emberPosAttr.needsUpdate = true;
         emberColAttr.needsUpdate = true;
-        emberSzAttr.needsUpdate = true;
+        emberSzAttr.needsUpdate  = true;
       }
 
-      // ── UPDATE MARKERS (proximity + animation) ──────────────────────────────
-      let closestIdx = -1;
-      let closestDist = Infinity;
-
+      // ── MARKERS ───────────────────────────────────────────────────────────────
+      let closestIdx = -1, closestDist = Infinity;
       for (let mi = 0; mi < markers.length; mi++) {
-        const m = markers[mi];
-        const dx = charPos.x - m.pos.x;
-        const dz = charPos.z - m.pos.z;
-        const dist = Math.sqrt(dx * dx + dz * dz);
-
-        // GTA-style animation
+        const m     = markers[mi];
+        const dx    = charPos.x - m.pos.x;
+        const dz    = charPos.z - m.pos.z;
+        const dist  = Math.sqrt(dx*dx + dz*dz);
         const phase = mi * 1.3;
-
-        // Chevron: rotate steadily + gentle bob
+        // Pre-compute sin values — avoids redundant trig calls per marker
+        const _s1 = Math.sin(elapsed * 1.5 + phase);
+        const _s2 = Math.sin(elapsed * 1.2 + phase);
+        const _s3 = Math.sin(elapsed * 1.4 + phase);
+        const _s4 = Math.sin(elapsed * 1.6 + phase * 0.9);
         m.chevron.rotation.y = elapsed * 1.8 + phase;
-        m.chevron.position.y = 8.5 + Math.sin(elapsed * 1.5 + phase) * 0.25;
-
-        // Beam: subtle opacity pulse
-        (m.beam.material as THREE.MeshBasicMaterial).opacity =
-          0.11 + Math.sin(elapsed * 1.2 + phase) * 0.04;
-
-        // Ground ring: gentle opacity breathe
-        (m.groundDisc.material as THREE.MeshBasicMaterial).opacity =
-          0.28 + Math.sin(elapsed * 1.4 + phase) * 0.10;
-
-        // Soft glow pulse
-        m.glow.intensity = 1.5 + Math.sin(elapsed * 1.6 + phase * 0.9) * 0.5;
-
-        if (dist < MARKER_INTERACT_RADIUS && dist < closestDist) {
-          closestDist = dist;
-          closestIdx = mi;
-        }
+        m.chevron.position.y = 8.5 + _s1 * 0.25;
+        (m.beam.material       as THREE.MeshBasicMaterial).opacity = 0.11 + _s2 * 0.04;
+        (m.groundDisc.material as THREE.MeshBasicMaterial).opacity = 0.28 + _s3 * 0.10;
+        m.glow.intensity = 1.5 + _s4 * 0.5;
+        if (dist < MARKER_INTERACT_RADIUS && dist < closestDist) { closestDist = dist; closestIdx = mi; }
       }
 
       if (closestIdx !== activeMarkerIdx) {
         activeMarkerIdx = closestIdx;
-        if (closestIdx >= 0) {
-          const m = markers[closestIdx];
-          const canActivate = closestDist <= MARKER_ACTIVATE_RADIUS;
-          setMarkerPromptState(markerPrompt, m, canActivate);
-        } else {
-          setMarkerPromptState(markerPrompt, null, false);
-        }
+        if (closestIdx >= 0) setMarkerPromptState(markerPrompt, markers[closestIdx], closestDist <= MARKER_ACTIVATE_RADIUS);
+        else setMarkerPromptState(markerPrompt, null, false);
       } else if (closestIdx >= 0) {
-        // Update prompt text as distance changes
-        const m = markers[closestIdx];
-        const canActivate = closestDist <= MARKER_ACTIVATE_RADIUS;
-        setMarkerPromptState(markerPrompt, m, canActivate);
+        setMarkerPromptState(markerPrompt, markers[closestIdx], closestDist <= MARKER_ACTIVATE_RADIUS);
       }
 
-      // Third-person camera
+      // ── CAMERA ────────────────────────────────────────────────────────────────
       const eyeY = charPos.y + charH * 0.55;
-      const lookAt = new THREE.Vector3(charPos.x, eyeY, charPos.z);
+      // Re-use pre-allocated vectors — no new THREE.Vector3() inside tick
+      _lookAt.set(charPos.x, eyeY, charPos.z);
 
-      const camDesired = new THREE.Vector3(
+      _camDesired.set(
         charPos.x + Math.sin(camYaw) * camDist * Math.cos(camPitch),
         charPos.y + camDist * Math.sin(camPitch) + charH * 0.3,
-        charPos.z + Math.cos(camYaw) * camDist * Math.cos(camPitch)
+        charPos.z + Math.cos(camYaw) * camDist * Math.cos(camPitch),
       );
-      camDesired.x += Math.sin(elapsed * 0.55) * 0.07;
-      camDesired.y += Math.sin(elapsed * 0.9) * 0.05;
-      camDesired.z += Math.cos(elapsed * 0.6) * 0.05;
-      camCurrent.lerp(camDesired, CAM_SMOOTH);
+      _camDesired.x += Math.sin(elapsed * 0.55) * 0.07;
+      _camDesired.y += Math.sin(elapsed * 0.90) * 0.05;
+      _camDesired.z += Math.cos(elapsed * 0.60) * 0.05;
+      camCurrent.lerp(_camDesired, CAM_SMOOTH);
 
       const camR2 = camCurrent.lengthSq();
-      if (camR2 > CAM_MAX_RADIUS * CAM_MAX_RADIUS) {
+      if (camR2 > CAM_MAX_RADIUS * CAM_MAX_RADIUS)
         camCurrent.multiplyScalar(CAM_MAX_RADIUS / Math.sqrt(camR2));
-      }
 
       camera.position.copy(camCurrent);
-      camera.lookAt(lookAt);
+      camera.lookAt(_lookAt);
       if (postFxRuntime) postFxRuntime.composer.render();
       else renderer.render(scene, camera);
     };
 
+    // ── LOADING BADGE ─────────────────────────────────────────────────────────
     const loadingBadge = document.createElement('div');
     loadingBadge.textContent = 'Preparing 3D experience...';
     loadingBadge.style.cssText = `
-      position: fixed;
-      right: 18px;
-      bottom: 18px;
-      z-index: 41;
-      padding: 6px 10px;
-      border-radius: 8px;
-      background: rgba(0, 0, 0, 0.45);
-      color: rgba(255,255,255,0.82);
+      position: fixed; right: 18px; bottom: 18px; z-index: 41;
+      padding: 6px 10px; border-radius: 8px;
+      background: rgba(0,0,0,0.45); color: rgba(255,255,255,0.82);
       border: 1px solid rgba(255,255,255,0.14);
-      font: 11px/1.2 'Inter', system-ui, sans-serif;
-      pointer-events: none;
+      font: 11px/1.2 'Inter', system-ui, sans-serif; pointer-events: none;
     `;
     document.body.appendChild(loadingBadge);
 
     const initBasicScene = async () => {
-      await new Promise<void>((resolve) => setTimeout(resolve, 120));
+      await new Promise<void>(resolve => setTimeout(resolve, 120));
       timer.reset();
       tick();
     };
 
     const enablePostProcessing = async () => {
-      const module = await import('./map/postprocessing');
+      const module  = await import('./map/postprocessing');
       postFxRuntime = module.createPostProcessing(renderer, scene, camera, qualityProfile);
       postFxRuntime.setSize(window.innerWidth, window.innerHeight);
     };
@@ -1018,6 +848,7 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
       if (mapResult.status === 'fulfilled') {
         const mapGltf = mapResult.value;
         fixMapMaterials(mapGltf.scene);
+        applyEmissionTweaks(mapGltf.scene);
         registerModelEnhancements(mapGltf.scene, enhancementState);
         scene.add(mapGltf.scene);
         logDev('✅ map.glb loaded');
@@ -1031,13 +862,10 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
       }
 
       const charGltf: LoadedGLTF = charResult.value;
-      logDev('✅ character.glb:', {
-        children: charGltf.scene.children.length,
-        animations: charGltf.animations.length,
-      });
+      logDev('✅ character.glb:', { children: charGltf.scene.children.length, animations: charGltf.animations.length });
 
       const rootChildren = charGltf.scene.children as THREE.Object3D[];
-      const anims = charGltf.animations as THREE.AnimationClip[];
+      const anims        = charGltf.animations   as THREE.AnimationClip[];
 
       if (rootChildren.length >= 3) {
         const children = rootChildren.slice();
@@ -1047,15 +875,10 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
           registerModelEnhancements(arm, enhancementState, { isCharacter: true });
           scene.add(arm);
           arm.visible = (i === STATE_IDLE);
-          const mixer = new THREE.AnimationMixer(arm);
-          const clip = anims[i];
-          if (clip) {
-            const action = mixer.clipAction(clip);
-            action.setLoop(THREE.LoopRepeat, Infinity);
-            action.play();
-          }
-          armatures.push(arm);
-          mixers.push(mixer);
+          const mixer  = new THREE.AnimationMixer(arm);
+          const clip   = anims[i];
+          if (clip) { const action = mixer.clipAction(clip); action.setLoop(THREE.LoopRepeat, Infinity); action.play(); }
+          armatures.push(arm); mixers.push(mixer);
         }
       } else if (anims.length >= 1) {
         for (let i = 0; i < Math.min(3, anims.length); i++) {
@@ -1064,12 +887,10 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
           registerModelEnhancements(arm, enhancementState, { isCharacter: true });
           scene.add(arm);
           arm.visible = (i === STATE_IDLE);
-          const mixer = new THREE.AnimationMixer(arm);
+          const mixer  = new THREE.AnimationMixer(arm);
           const action = mixer.clipAction(anims[i]);
-          action.setLoop(THREE.LoopRepeat, Infinity);
-          action.play();
-          armatures.push(arm);
-          mixers.push(mixer);
+          action.setLoop(THREE.LoopRepeat, Infinity); action.play();
+          armatures.push(arm); mixers.push(mixer);
         }
       }
 
@@ -1085,12 +906,11 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
       await initBasicScene();
       requestAnimationFrame(() => {
         setTimeout(() => {
-          loadAssets().finally(() => {
-            if (document.body.contains(loadingBadge)) document.body.removeChild(loadingBadge);
-          }).catch(err => console.error('Map asset init error:', err));
+          loadAssets()
+            .finally(() => { if (document.body.contains(loadingBadge)) document.body.removeChild(loadingBadge); })
+            .catch(err => console.error('Map asset init error:', err));
         }, 80);
       });
-
       setTimeout(() => {
         enablePostProcessing().catch(err => console.error('PostFX init error:', err));
       }, 420);
@@ -1101,65 +921,47 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
     // ── CLEANUP ───────────────────────────────────────────────────────────────
     return () => {
       cancelAnimationFrame(animFrameId);
+      if (stateEl)      stateEl.style.display      = 'none';
+      if (hudEl)        hudEl.style.display         = 'none';
+      if (joystickZone) joystickZone.style.display  = 'none';
 
-      // Hide HUD/joystick when unmounting
-      if (stateEl) stateEl.style.display = 'none';
-      if (hudEl) hudEl.style.display = 'none';
-      if (joystickZone) joystickZone.style.display = 'none';
-
-      window.removeEventListener('start-experience', startIntro);
-      window.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('keyup', onKeyUp);
-      window.removeEventListener('mousedown', onMouseDown);
-      window.removeEventListener('mouseup', onMouseUp);
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('touchstart', onTouchStart);
-      window.removeEventListener('touchmove', onTouchMove);
-      window.removeEventListener('touchend', onTouchEndCancel);
-      window.removeEventListener('touchcancel', onTouchEndCancel);
-      window.removeEventListener('resize', onResize);
+      window.removeEventListener('start-experience',  startIntro);
+      window.removeEventListener('keydown',           onKeyDown);
+      window.removeEventListener('keyup',             onKeyUp);
+      window.removeEventListener('mousedown',         onMouseDown);
+      window.removeEventListener('mouseup',           onMouseUp);
+      window.removeEventListener('mousemove',         onMouseMove);
+      window.removeEventListener('touchstart',        onTouchStart);
+      window.removeEventListener('touchmove',         onTouchMove);
+      window.removeEventListener('touchend',          onTouchEndCancel);
+      window.removeEventListener('touchcancel',       onTouchEndCancel);
+      window.removeEventListener('resize',            onResize);
       window.removeEventListener('orientationchange', onOrientationChange);
-      window.removeEventListener('wheel', onWheel);
+      window.removeEventListener('wheel',             onWheel);
       joystickZone?.removeEventListener('touchstart', onJoyTouchStart);
+      window.removeEventListener('keydown',           onMarkerKeyDown);
+      markerPrompt.removeEventListener('click',       onMarkerTap);
+      if (document.body.contains(markerPrompt))  document.body.removeChild(markerPrompt);
+      if (document.body.contains(loadingBadge))  document.body.removeChild(loadingBadge);
 
-      window.removeEventListener('keydown', onMarkerKeyDown);
-      markerPrompt.removeEventListener('click', onMarkerTap);
-      if (document.body.contains(markerPrompt)) document.body.removeChild(markerPrompt);
-      if (document.body.contains(loadingBadge)) document.body.removeChild(loadingBadge);
-
-      // Dispose marker geometries
-      beamGeo.dispose();
-      chevronGeo.dispose();
-      groundDiscGeo.dispose();
+      beamGeo.dispose(); chevronGeo.dispose(); groundDiscGeo.dispose();
       for (const m of markers) {
-        (m.beam.material as THREE.Material).dispose();
-        (m.chevron.material as THREE.Material).dispose();
+        (m.beam.material       as THREE.Material).dispose();
+        (m.chevron.material    as THREE.Material).dispose();
         (m.groundDisc.material as THREE.Material).dispose();
         m.glow.dispose();
       }
 
       renderer.dispose();
-      emberGeo.dispose();
-      emberMat.dispose();
-      spriteTex.dispose();
-      starsGeo.dispose();
-      starsMat.dispose();
-      starTex.dispose();
-      ssGeo.dispose();
-      ssMat.dispose();
-      shaderGridMat.dispose();
-      basicGridMat.dispose();
-      floatingDust.dispose();
-      characterAura.dispose();
+      emberGeo.dispose(); emberMat.dispose(); spriteTex.dispose();
+      starsGeo.dispose(); starsMat.dispose(); starTex.dispose();
+      ssGeo.dispose(); ssMat.dispose();
+      shaderGridMat.dispose(); basicGridMat.dispose();
+      floatingDust.dispose(); characterAura.dispose();
       (postFxRuntime?.composer as { dispose?: () => void } | undefined)?.dispose?.();
       if (container.contains(canvas)) container.removeChild(canvas);
     };
   }, []);
 
-  return (
-    <div
-      ref={mountRef}
-      style={{ position: 'fixed', inset: 0, zIndex: 2 }}
-    />
-  );
+  return <div ref={mountRef} style={{ position: 'fixed', inset: 0, zIndex: 2 }} />;
 }

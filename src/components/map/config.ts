@@ -1,5 +1,5 @@
 export const GROUND_Y = 0;
-export const BOUNDARY_RADIUS = 54;
+export const BOUNDARY_RADIUS = 58;
 export const WALK_SPEED = 8;
 export const RUN_SPEED = 18;
 export const TURN_SPEED = 12;

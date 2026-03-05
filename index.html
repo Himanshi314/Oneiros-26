@@ -26,59 +26,7 @@
       user-select: none;
       overscroll-behavior: none;
     }
-
-    /* ── CHARACTER STATE BADGE ── */
-    #state {
-      position: fixed;
-      top: max(18px, env(safe-area-inset-top));
-      left: max(18px, env(safe-area-inset-left));
-      z-index: 40;
-      font-family: 'Courier New', monospace;
-      font-size: 11px;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: #4fffaa;
-      background: rgba(0,0,0,0.55);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      padding: 6px 14px;
-      border-radius: 8px;
-      border: 1px solid rgba(255,255,255,0.08);
-      pointer-events: none;
-      display: none; /* shown by JS after preloader */
-    }
-
-    /* ── DESKTOP HUD ── */
-    #hud {
-      position: fixed;
-      bottom: max(20px, env(safe-area-inset-bottom));
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 40;
-      display: none; /* shown by JS after preloader */
-      gap: 6px;
-      align-items: center;
-      background: rgba(0,0,0,0.5);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      border: 1px solid rgba(255,255,255,0.07);
-      border-radius: 10px;
-      padding: 9px 16px;
-      color: rgba(255,255,255,0.4);
-      font-size: 11px;
-      font-family: 'Courier New', monospace;
-      pointer-events: none;
-      white-space: nowrap;
-    }
-    #hud kbd {
-      color: #ddd;
-      background: rgba(255,255,255,0.1);
-      padding: 1px 7px;
-      border-radius: 4px;
-      border: 1px solid rgba(255,255,255,0.14);
-    }
-    @media (pointer: coarse) { #hud { display: none !important; } }
-
+    
     /* ── MOBILE JOYSTICK ── */
     #joystick-zone {
       position: fixed;
@@ -140,43 +88,10 @@
       0%, 100% { opacity: 0.35; transform: scale(1); }
       50%       { opacity: 0.7;  transform: scale(1.06); }
     }
-
-    /* ── MOBILE HINTS ── */
-    #mobile-hints {
-      position: fixed;
-      top: max(18px, env(safe-area-inset-top));
-      right: max(18px, env(safe-area-inset-right));
-      z-index: 40;
-      font-family: 'Courier New', monospace;
-      font-size: 9px;
-      letter-spacing: 0.08em;
-      color: rgba(255,255,255,0.22);
-      pointer-events: none;
-      display: none;
-      text-align: right;
-      line-height: 1.7;
-    }
-    @media (pointer: coarse) {
-      #mobile-hints { display: block; }
-    }
   </style>
 </head>
 
 <body>
-  <div id="state">Idle</div>
-
-  <div id="hud">
-    <kbd>W A S D</kbd>&nbsp; Move &nbsp;·&nbsp;
-    <kbd>Shift</kbd>&nbsp; Sprint &nbsp;·&nbsp;
-    <kbd>Drag</kbd>&nbsp; Camera &nbsp;·&nbsp;
-    <kbd>Scroll</kbd>&nbsp; Zoom
-  </div>
-
-  <div id="mobile-hints">
-    SWIPE → CAMERA<br>
-    PINCH TO ZOOM<br>
-    PUSH FULL = SPRINT
-  </div>
 
   <div id="joystick-zone">
     <div id="joystick-base">
