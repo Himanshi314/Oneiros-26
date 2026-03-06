@@ -76,6 +76,10 @@ export const createPostProcessing = (
     bloom.setSize(scaledWidth, scaledHeight);
   };
 
+  const setPixelRatio = (value: number) => {
+    composer.setPixelRatio(value);
+  };
+
   const setBloomEnabled = (enabled: boolean) => {
     bloom.enabled = enabled;
   };
@@ -84,5 +88,5 @@ export const createPostProcessing = (
     bloom.strength = value;
   };
 
-  return { composer, bloom, setSize, setBloomEnabled, setBloomStrength };
+  return { composer, bloom, setSize, setPixelRatio, setBloomEnabled, setBloomStrength };
 };

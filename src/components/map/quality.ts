@@ -16,6 +16,11 @@ export type QualityProfile = {
   enableDynamicLights: boolean;
 };
 
+export type MobileResolutionProfile = {
+  pixelRatioCap: number;
+  postProcessScale: number;
+};
+
 export const qualityProfileFor = (level: QualityLevel): QualityProfile => {
   if (level === 'LOW') {
     return {
@@ -79,11 +84,17 @@ const getGpuRendererString = (renderer: THREE.WebGLRenderer) => {
   return typeof raw === 'string' ? raw.toLowerCase() : '';
 };
 
-export const detectInitialQuality = (renderer: THREE.WebGLRenderer): QualityProfile => {
-  const mobile = isLikelyMobile();
-  const gpu = getGpuRendererString(renderer);
-  const memory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 4;
-  const cores = navigator.hardwareConcurrency ?? 4;
+const isWeakGpu = (gpu: string) => /mali|adreno 3|adreno 4|intel\(r\) hd|uhd 6|apple gpu/i.test(gpu);
+
+const isStrongGpu = (gpu: string) => /rtx|radeon rx|apple m[1-9]|adreno 7/i.test(gpu);
+
+const getCapabilityScore = (options: {
+  mobile: boolean;
+  gpu: string;
+  memory: number;
+  cores: number;
+}) => {
+  const { mobile, gpu, memory, cores } = options;
 
   let score = 0;
   if (mobile) score -= 2;
@@ -91,15 +102,56 @@ export const detectInitialQuality = (renderer: THREE.WebGLRenderer): QualityProf
   else if (memory >= 8) score += 1;
   if (cores <= 4) score -= 2;
   else if (cores >= 8) score += 2;
+  if (isWeakGpu(gpu)) score -= 2;
+  if (isStrongGpu(gpu)) score += 2;
 
-  const weakGpu = /mali|adreno 3|adreno 4|intel\(r\) hd|uhd 6|apple gpu/i.test(gpu);
-  const strongGpu = /rtx|radeon rx|apple m[1-9]|adreno 7/i.test(gpu);
-  if (weakGpu) score -= 2;
-  if (strongGpu) score += 2;
+  return score;
+};
+
+export const detectInitialQuality = (renderer: THREE.WebGLRenderer): QualityProfile => {
+  const mobile = isLikelyMobile();
+  const gpu = getGpuRendererString(renderer);
+  const memory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 4;
+  const cores = navigator.hardwareConcurrency ?? 4;
+  const score = getCapabilityScore({ mobile, gpu, memory, cores });
 
   if (score <= -2) return qualityProfileFor('LOW');
   if (score <= 2) return qualityProfileFor('MEDIUM');
   return qualityProfileFor('HIGH');
+};
+
+export const getMobileResolutionProfile = (
+  renderer: THREE.WebGLRenderer,
+): MobileResolutionProfile => {
+  const gpu = getGpuRendererString(renderer);
+  const memory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 4;
+  const cores = navigator.hardwareConcurrency ?? 4;
+  const shortSide = Math.min(window.innerWidth, window.innerHeight);
+  const dpr = window.devicePixelRatio || 1;
+
+  let score = getCapabilityScore({ mobile: true, gpu, memory, cores });
+  if (dpr >= 3) score += 1;
+  if (shortSide >= 390) score += 1;
+  if (shortSide <= 360) score -= 1;
+
+  if (score <= -2) {
+    return {
+      pixelRatioCap: 1.1,
+      postProcessScale: 0.78,
+    };
+  }
+
+  if (score >= 3) {
+    return {
+      pixelRatioCap: 1.45,
+      postProcessScale: 0.92,
+    };
+  }
+
+  return {
+    pixelRatioCap: 1.32,
+    postProcessScale: 0.86,
+  };
 };
 
 export const downgradeQuality = (level: QualityLevel): QualityLevel => {

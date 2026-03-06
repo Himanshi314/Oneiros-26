@@ -15,6 +15,7 @@ import {
   updateModelEnhancements,
 } from './map/sceneEnhancements';
 import {
+  getMobileResolutionProfile,
   qualityProfileFor,
   type QualityProfile,
 } from './map/quality';
@@ -104,12 +105,22 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
       powerPreference: 'high-performance',
     });
 
-    // Use MEDIUM on mobile, HIGH on desktop
+    // Use MEDIUM on mobile, HIGH on desktop, then tune mobile sharpness separately.
     let qualityProfile = qualityProfileFor(isMobile ? 'MEDIUM' : 'HIGH');
+    const mobileResolutionProfile = isMobile ? getMobileResolutionProfile(renderer) : null;
 
-    // Hard-cap pixel ratio: 1.5 on mobile, 2 on desktop
+    // Hard-cap DPR to avoid runaway fill-rate on ultra-dense mobile screens.
     const PR_CAP = isMobile ? 1.5 : 2.0;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, PR_CAP, qualityProfile.pixelRatioCap));
+
+    const getTargetPixelRatio = (profile: QualityProfile) => {
+      const resolutionCap = isMobile && mobileResolutionProfile && profile.level !== 'LOW'
+        ? Math.max(profile.pixelRatioCap, mobileResolutionProfile.pixelRatioCap)
+        : profile.pixelRatioCap;
+
+      return Math.min(window.devicePixelRatio || 1, PR_CAP, resolutionCap);
+    };
+
+    renderer.setPixelRatio(getTargetPixelRatio(qualityProfile));
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setClearColor(new THREE.Color(0x020205), 1);
     renderer.shadowMap.enabled = qualityProfile.enableDynamicLights && !isMobile;
@@ -137,10 +148,18 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
     type PostFxRuntime = {
       composer: { render: () => void; setSize: (w: number, h: number) => void };
       setSize: (w: number, h: number) => void;
+      setPixelRatio: (value: number) => void;
       setBloomEnabled: (enabled: boolean) => void;
       setBloomStrength: (value: number) => void;
     };
     let postFxRuntime: PostFxRuntime | null = null;
+
+    const syncRendererSurface = (profile: QualityProfile) => {
+      renderer.setPixelRatio(getTargetPixelRatio(profile));
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      postFxRuntime?.setPixelRatio(renderer.getPixelRatio());
+      postFxRuntime?.setSize(window.innerWidth, window.innerHeight);
+    };
 
     let camYaw = Math.PI;
     let camPitch = 0.1;
@@ -322,8 +341,7 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
 
     const applyQualityProfile = (nextProfile: QualityProfile) => {
       qualityProfile = nextProfile;
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, PR_CAP, qualityProfile.pixelRatioCap));
-      renderer.setSize(window.innerWidth, window.innerHeight);
+      syncRendererSurface(qualityProfile);
       renderer.shadowMap.enabled = qualityProfile.enableDynamicLights && !isMobile;
       renderer.shadowMap.needsUpdate = true;
       renderer.toneMappingExposure = 1.24;
@@ -480,8 +498,7 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
     const onResize = () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      postFxRuntime?.setSize(window.innerWidth, window.innerHeight);
+      syncRendererSurface(qualityProfile);
     };
     const onOrientationChange = () => setTimeout(onResize, 100);
     const onWheel = (e: WheelEvent) => {
@@ -918,10 +935,11 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
     const enablePostProcessing = async () => {
       const module = await import('./map/postprocessing');
       postFxRuntime = module.createPostProcessing(renderer, scene, camera, qualityProfile, {
-        renderScale: isMobile ? 0.72 : 1,
+        renderScale: isMobile ? (mobileResolutionProfile?.postProcessScale ?? 0.86) : 1,
         bloomStrengthMultiplier: isMobile ? 0.85 : 1,
         vignetteDarkness: isMobile ? 0.24 : undefined,
       });
+      postFxRuntime.setPixelRatio(renderer.getPixelRatio());
       postFxRuntime.setSize(window.innerWidth, window.innerHeight);
     };
 
