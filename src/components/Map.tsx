@@ -100,7 +100,7 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
 
     // ── RENDERER ──────────────────────────────────────────────────────────────
     const renderer = new THREE.WebGLRenderer({
-      antialias: !isMobile,         // disable MSAA on mobile — big fill-rate win
+      antialias: !isMobile,
       alpha: false,
       powerPreference: 'high-performance',
     });
@@ -774,7 +774,6 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
         characterAura.update(charPos, elapsed);
       }
 
-      // Throttle particle + enhancement updates to every other frame on mobile
       const doFullUpdate = !isMobile || (frameCount % 2 === 0);
 
       if (qualityProfile.enableParticles) {
@@ -996,7 +995,7 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
       });
       enableMeshShadows(charGltf.scene);
 
-      // ── SCALE: 0.18 — noticeably smaller than the previous 0.26 ──────────
+      // ── SCALE ─────────────────────────────────────────────────────────────
       const charOuter = new THREE.Group();
       const charInner = new THREE.Group();
       charInner.scale.setScalar(0.3);
@@ -1024,9 +1023,10 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
         charActions[STATE_WALK]!.setLoop(THREE.LoopRepeat, Infinity);
         charActions[STATE_WALK]!.timeScale = 1.0;
 
+        // ── SPRINT: same walk animation played faster ──────────────────────
         charActions[STATE_RUN] = charMixer.clipAction(walkClip);
         charActions[STATE_RUN]!.setLoop(THREE.LoopRepeat, Infinity);
-        charActions[STATE_RUN]!.timeScale = 1.6;
+        charActions[STATE_RUN]!.timeScale = 2.4;
       }
 
       charActions[STATE_IDLE]?.play();
@@ -1103,7 +1103,6 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
     };
   }, []);
 
-  // Hide joystick / HUD / state badge when a page overlay is open
   useEffect(() => {
     const joystickZone = document.getElementById('joystick-zone');
     const hudEl = document.getElementById('hud');
