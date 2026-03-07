@@ -1,0 +1,14 @@
+﻿
+> oneiros-26@0.0.0 build
+> tsc -b && vite build
+
+src/components/Contact.tsx(2,21): error TS2307: Cannot find module '@emailjs/browser' or its corresponding type declarations.
+src/components/Contact.tsx(49,21): error TS7006: Parameter 'error' implicitly has an 'any' type.
+src/components/DecryptedText.tsx(2,24): error TS2307: Cannot find module 'motion/react' or its corresponding type declarations.
+src/components/DecryptedText.tsx(3,38): error TS2307: Cannot find module 'motion/react' or its corresponding type declarations.
+src/components/DomeGallery.tsx(2,28): error TS2307: Cannot find module '@use-gesture/react' or its corresponding type declarations.
+src/components/DomeGallery.tsx(342,29): error TS7031: Binding element 'event' implicitly has an 'any' type.
+src/components/DomeGallery.tsx(357,24): error TS7031: Binding element 'event' implicitly has an 'any' type.
+src/components/DomeGallery.tsx(357,31): error TS7031: Binding element 'last' implicitly has an 'any' type.
+src/components/DomeGallery.tsx(357,92): error TS7031: Binding element 'movement' implicitly has an 'any' type.
+src/components/MajorEvents.tsx(2,35): error TS2307: Cannot find module 'motion/react' or its corresponding type declarations.

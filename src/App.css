@@ -49,3 +49,23 @@
   align-items: center;
   justify-content: center;
 }
+
+/* ── BACK HINT: desktop shows static badge, mobile shows tappable pill ── */
+.back-hint-desktop {
+  display: block;
+}
+
+.back-hint-mobile {
+  display: none !important;
+}
+
+@media (max-width: 1023px),
+(hover: none) and (pointer: coarse) {
+  .back-hint-desktop {
+    display: none !important;
+  }
+
+  .back-hint-mobile {
+    display: flex !important;
+  }
+}
