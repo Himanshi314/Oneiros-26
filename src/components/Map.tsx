@@ -99,15 +99,13 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
 
     // ── RENDERER ──────────────────────────────────────────────────────────────
     const renderer = new THREE.WebGLRenderer({
-      antialias: !isMobile,         // disable MSAA on mobile — big fill-rate win
+      antialias: !isMobile,
       alpha: false,
       powerPreference: 'high-performance',
     });
 
-    // Use MEDIUM on mobile, HIGH on desktop
     let qualityProfile = qualityProfileFor(isMobile ? 'MEDIUM' : 'HIGH');
 
-    // Hard-cap pixel ratio: 1.5 on mobile, 2 on desktop
     const PR_CAP = isMobile ? 1.5 : 2.0;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, PR_CAP, qualityProfile.pixelRatioCap));
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -162,7 +160,6 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
     const enhancementState = createEnhancementState();
 
     // ── MINIMAL CHARACTER AURA ────────────────────────────────────────────────
-    // Bare minimum: single faint white ground disc — no blue, no particles
     const _auraGeo  = new THREE.CircleGeometry(0.55, 24);
     const _auraMat  = new THREE.MeshBasicMaterial({
       color: new THREE.Color(0xffffff),
@@ -309,7 +306,6 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
     const surfaceGeo    = new THREE.PlaneGeometry(300, 300, 1, 1);
     const shaderGridMat = createNeonGridMaterial();
     const basicGridMat  = new THREE.MeshBasicMaterial({ color: new THREE.Color(0x37215f) });
-    // Force basic grid on mobile — shader grid is fill-rate heavy
     let gridUsesShader  = isMobile ? false : qualityProfile.enableShaderGrid;
     let surfaceMat: THREE.Material = gridUsesShader ? shaderGridMat : basicGridMat;
 
@@ -662,7 +658,6 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
     const camRight = new THREE.Vector3();
     const UP       = new THREE.Vector3(0, 1, 0);
 
-    // Pre-allocated scratch vectors — never allocate inside tick()
     const _lookAt     = new THREE.Vector3();
     const _camDesired = new THREE.Vector3();
     const _ssTail     = new THREE.Vector3();
@@ -754,7 +749,6 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
         characterAura.update(charPos, elapsed);
       }
 
-      // Throttle particle + enhancement updates to every other frame on mobile
       const doFullUpdate = !isMobile || (frameCount % 2 === 0);
 
       if (qualityProfile.enableParticles) {
@@ -915,7 +909,6 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
     };
 
     const enablePostProcessing = async () => {
-      // Skip post-processing entirely on mobile — single biggest GPU cost
       if (isMobile) return;
       const module  = await import('./map/postprocessing');
       postFxRuntime = module.createPostProcessing(renderer, scene, camera, qualityProfile);
@@ -973,7 +966,7 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
       });
       enableMeshShadows(charGltf.scene);
 
-      // ── SCALE: 0.18 — noticeably smaller than the previous 0.26 ──────────
+      // ── SCALE ─────────────────────────────────────────────────────────────
       const charOuter = new THREE.Group();
       const charInner = new THREE.Group();
       charInner.scale.setScalar(0.3);
@@ -1001,9 +994,10 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
         charActions[STATE_WALK]!.setLoop(THREE.LoopRepeat, Infinity);
         charActions[STATE_WALK]!.timeScale = 1.0;
 
+        // ── SPRINT: same walk animation played faster ──────────────────────
         charActions[STATE_RUN] = charMixer.clipAction(walkClip);
         charActions[STATE_RUN]!.setLoop(THREE.LoopRepeat, Infinity);
-        charActions[STATE_RUN]!.timeScale = 1.6;
+        charActions[STATE_RUN]!.timeScale = 2.4;
       }
 
       charActions[STATE_IDLE]?.play();
@@ -1080,7 +1074,6 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
     };
   }, []);
 
-  // Hide joystick / HUD / state badge when a page overlay is open
   useEffect(() => {
     const joystickZone = document.getElementById('joystick-zone');
     const hudEl        = document.getElementById('hud');
