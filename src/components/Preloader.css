@@ -43,6 +43,7 @@
         /* Mild zoom for mobile */
         width: 120%;
         max-width: 550px;
+        top: 35%;
 
         /* Natural enlargement avoiding scale clipping */
         transform: translate(-50%, -50%) translateZ(0);
@@ -62,6 +63,12 @@
     max-width: 400px;
     font-family: 'Exo 2', sans-serif;
     z-index: 10;
+}
+
+@media (max-width: 768px) {
+    .loading-wrapper {
+        bottom: 35%;
+    }
 }
 
 .loading-percentage {
