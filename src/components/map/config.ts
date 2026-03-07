@@ -19,8 +19,8 @@ export type MarkerDef = {
   color: number;
 };
 
-export const MARKER_INTERACT_RADIUS = 6;
-export const MARKER_ACTIVATE_RADIUS = 4;
+export const MARKER_INTERACT_RADIUS = 14;
+export const MARKER_ACTIVATE_RADIUS = 14;
 export const MARKER_DEFS: MarkerDef[] = [
   { page: 'about', label: 'About', pos: [-27, 0, -52], color: 0x00ffee },
   { page: 'major-events', label: 'Major Events', pos: [60, 0, 6], color: 0xff6ef9 },

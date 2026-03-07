@@ -10,6 +10,7 @@ export type MarkerRuntime = {
   beam: THREE.Mesh;
   chevron: THREE.Mesh;
   groundDisc: THREE.Mesh;
+  outerRing: THREE.Mesh;
   glow: THREE.PointLight;
   baseY: number;
 };
@@ -21,22 +22,26 @@ export const createMarkerPrompt = () => {
       position: fixed;
       bottom: 120px;
       left: 50%;
-      transform: translateX(-50%);
+      transform: translateX(-50%) translateZ(0);
       z-index: 45;
-      padding: 12px 28px;
-      border-radius: 14px;
-      background: rgba(0,0,0,0.72);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255,255,255,0.18);
+      padding: 14px 32px;
+      border-radius: 16px;
+      background: rgba(6, 6, 20, 0.78);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(255,255,255,0.12);
       color: #fff;
-      font-family: 'Inter', system-ui, sans-serif;
-      font-size: 15px;
-      letter-spacing: 0.4px;
+      font-family: 'Orbitron', 'Inter', system-ui, sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 1.5px;
       text-align: center;
+      text-transform: uppercase;
       pointer-events: none;
       opacity: 0;
-      transition: opacity 0.25s ease;
+      transition: opacity 0.3s ease, transform 0.3s ease;
       white-space: nowrap;
+      box-shadow: 0 4px 30px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.06);
     `;
   document.body.appendChild(markerPrompt);
   return markerPrompt;
@@ -47,18 +52,18 @@ export const setMarkerPromptState = (
   marker: MarkerRuntime | null,
   canActivate: boolean,
 ) => {
-  if (!marker) {
+  if (!marker || !canActivate) {
     markerPrompt.style.opacity = '0';
     markerPrompt.style.pointerEvents = 'none';
     return;
   }
 
-  markerPrompt.style.color = '#' + new THREE.Color(marker.color).getHexString();
-  markerPrompt.textContent = canActivate
-    ? `${marker.label} — Press E or tap here`
-    : `${marker.label} — get closer to interact`;
+  const hex = '#' + new THREE.Color(marker.color).getHexString();
+  markerPrompt.innerHTML = `<span style="color:${hex}; text-shadow: 0 0 12px ${hex}55;">${marker.label}</span> <span style="opacity:0.5; margin: 0 6px;">—</span> <span style="opacity:0.7; font-size:12px; letter-spacing:2px;">Press <kbd style="padding:2px 8px; border-radius:5px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); font-weight:700; color:#fff; font-size:13px;">E</kbd> or tap</span>`;
+  markerPrompt.style.borderColor = `${hex}33`;
+  markerPrompt.style.boxShadow = `0 4px 30px rgba(0,0,0,0.5), 0 0 20px ${hex}15, inset 0 0 0 1px ${hex}18`;
   markerPrompt.style.opacity = '1';
-  markerPrompt.style.pointerEvents = canActivate ? 'auto' : 'none';
+  markerPrompt.style.pointerEvents = 'auto';
 };
 
 export const createSceneMarkers = (
@@ -67,55 +72,73 @@ export const createSceneMarkers = (
 ) => {
   const markers: MarkerRuntime[] = [];
 
-  // GTA-style marker geometries
-  const beamGeo = new THREE.CylinderGeometry(0.7, 0.7, 8, 24, 1, true); // open-ended tall cylinder
-  const chevronGeo = new THREE.ConeGeometry(0.6, 0.9, 4);               // 4-sided = diamond arrow look
-  const groundDiscGeo = new THREE.RingGeometry(0.6, 1.4, 48);           // hollow ring on ground
+  // ── Enhanced marker geometries ──
+  const beamGeo = new THREE.CylinderGeometry(1.0, 1.4, 16, 32, 1, true); // thick tapered beam
+  const chevronGeo = new THREE.ConeGeometry(1.2, 1.5, 4);                 // large diamond arrow
+  const groundDiscGeo = new THREE.RingGeometry(1.2, 2.8, 64);             // wide inner ring
+  const outerRingGeo = new THREE.RingGeometry(3.2, 3.8, 64);              // large outer pulsing ring
 
   for (const def of defs) {
     const col = new THREE.Color(def.color);
     const group = new THREE.Group();
     group.position.set(def.pos[0], def.pos[1], def.pos[2]);
 
-    // ── Tall translucent beam (open cylinder) ──
+    // ── Tall translucent beam (tapered cylinder, open-ended) ──
     const beamMat = new THREE.MeshBasicMaterial({
       color: col,
       transparent: true,
-      opacity: 0.13,
+      opacity: 0.22,
       side: THREE.DoubleSide,
       depthWrite: false,
+      blending: THREE.AdditiveBlending,
     });
     const beam = new THREE.Mesh(beamGeo, beamMat);
-    beam.position.y = 4.0; // centered at y=4 so it spans 0–8
+    beam.position.y = 8.0; // centered higher (spans 0–16)
     group.add(beam);
 
     // ── Rotating chevron/arrow pointing down at the top ──
     const chevronMat = new THREE.MeshBasicMaterial({
       color: col,
       transparent: true,
-      opacity: 0.85,
+      opacity: 1.0,
+      blending: THREE.AdditiveBlending,
     });
     const chevron = new THREE.Mesh(chevronGeo, chevronMat);
     chevron.rotation.x = Math.PI; // point downwards
-    chevron.position.y = 8.5;
+    chevron.position.y = 17.0;
     group.add(chevron);
 
-    // ── Ground ring disc ──
+    // ── Inner ground ring ──
     const groundDiscMat = new THREE.MeshBasicMaterial({
       color: col,
       transparent: true,
-      opacity: 0.35,
+      opacity: 0.55,
       side: THREE.DoubleSide,
       depthWrite: false,
+      blending: THREE.AdditiveBlending,
     });
     const groundDisc = new THREE.Mesh(groundDiscGeo, groundDiscMat);
     groundDisc.rotation.x = -Math.PI / 2;
     groundDisc.position.y = 0.06;
     group.add(groundDisc);
 
-    // ── Soft point light at mid-height ──
-    const glow = new THREE.PointLight(def.color, 1.8, 12);
-    glow.position.y = 3.5;
+    // ── Outer pulsing ring ──
+    const outerRingMat = new THREE.MeshBasicMaterial({
+      color: col,
+      transparent: true,
+      opacity: 0.30,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+    const outerRing = new THREE.Mesh(outerRingGeo, outerRingMat);
+    outerRing.rotation.x = -Math.PI / 2;
+    outerRing.position.y = 0.04;
+    group.add(outerRing);
+
+    // ── Powerful point light for far visibility ──
+    const glow = new THREE.PointLight(def.color, 6.0, 30);
+    glow.position.y = 6.0;
     group.add(glow);
 
     scene.add(group);
@@ -129,10 +152,11 @@ export const createSceneMarkers = (
       beam,
       chevron,
       groundDisc,
+      outerRing,
       glow,
       baseY: def.pos[1],
     });
   }
 
-  return { markers, beamGeo, chevronGeo, groundDiscGeo };
+  return { markers, beamGeo, chevronGeo, groundDiscGeo, outerRingGeo };
 };

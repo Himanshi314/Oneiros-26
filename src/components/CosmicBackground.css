@@ -1,0 +1,22 @@
+/* ── Cosmic Background CSS Animations ─────────────────────────────────────── */
+/* These run on the compositor thread — completely immune to JS main-thread blocking */
+
+@keyframes cosmic-twinkle {
+    0% {
+        opacity: 0.3;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+@keyframes cosmic-rotate {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}

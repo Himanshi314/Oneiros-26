@@ -1,11 +1,10 @@
 import { useEffect, useRef } from 'react';
-import { createRoot } from 'react-dom/client';
-import type { Root } from 'react-dom/client';
+
 import * as THREE from 'three';
 import { createMovementKeys, updateMovementKey } from './map/input';
 import { createMarkerPrompt, createSceneMarkers, setMarkerPromptState } from './map/markers';
 import { enableMeshShadows, fixMapMaterials, loadGLB, applyEmissionTweaks, type LoadedGLTF } from './map/loading';
-import DecryptedText from './DecryptedText';
+
 import { applyAtmosphereFog, createFloatingDust } from './map/atmosphere';
 import { createNeonGridMaterial } from './map/neon';
 import {
@@ -54,6 +53,7 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
   const onNavigateRef = useRef<MapProps['onNavigate']>(onNavigate);
   const onCloseRef = useRef<MapProps['onClose']>(onClose);
   const activePageRef = useRef<MapProps['activePage']>(activePage);
+  const hasStartedRef = useRef(false);
 
   useEffect(() => { onNavigateRef.current = onNavigate; }, [onNavigate]);
   useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
@@ -78,6 +78,11 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
 
     const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
+    // ── HIDE UI INITIALLY (Pre-intro) ──────────────────────────────────────────
+    if (stateEl) stateEl.style.display = 'none';
+    if (hudEl) hudEl.style.display = 'none';
+    if (joystickZone) joystickZone.style.display = 'none';
+
     const showUI = () => {
       if (stateEl) stateEl.style.display = 'block';
       if (hudEl) hudEl.style.display = 'flex';
@@ -90,11 +95,16 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
     const INTRO_DURATION = 4.5;
 
     const startIntro = () => {
-      isIntroActive = true;
-      introInitialized = false;
-      if (stateEl) stateEl.style.display = 'none';
-      if (hudEl) hudEl.style.display = 'none';
-      if (joystickZone) joystickZone.style.display = 'none';
+      hasStartedRef.current = true;
+      // ── DELAY INTRO SLIGHTLY ──
+      // Allow the preloader transition to finish and browser to breath
+      setTimeout(() => {
+        isIntroActive = true;
+        introInitialized = false;
+        if (stateEl) stateEl.style.display = 'none';
+        if (hudEl) hudEl.style.display = 'none';
+        if (joystickZone) joystickZone.style.display = 'none';
+      }, 50);
     };
     window.addEventListener('start-experience', startIntro);
 
@@ -110,7 +120,7 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
     const mobileResolutionProfile = isMobile ? getMobileResolutionProfile(renderer) : null;
 
     // Hard-cap DPR to avoid runaway fill-rate on ultra-dense mobile screens.
-    const PR_CAP = isMobile ? 1.5 : 2.0;
+    const PR_CAP = isMobile ? 1.15 : 1.75;
 
     const getTargetPixelRatio = (profile: QualityProfile) => {
       const resolutionCap = isMobile && mobileResolutionProfile && profile.level !== 'LOW'
@@ -210,8 +220,8 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
 
     // ── MYSTICAL EMBERS ───────────────────────────────────────────────────────
     const EMBER_COUNT = isMobile
-      ? Math.max(1, Math.floor(80 * qualityProfile.particleCountScale))
-      : Math.max(1, Math.floor(220 * qualityProfile.particleCountScale));
+      ? Math.max(1, Math.floor(40 * qualityProfile.particleCountScale))
+      : Math.max(1, Math.floor(180 * qualityProfile.particleCountScale));
 
     const ePos = new Float32Array(EMBER_COUNT * 3);
     const eVel = new Float32Array(EMBER_COUNT * 3);
@@ -299,7 +309,7 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
 
     // ── INTERACTIVE 3D MARKERS ────────────────────────────────────────────────
     const markerPrompt = createMarkerPrompt();
-    const { markers, beamGeo, chevronGeo, groundDiscGeo } = createSceneMarkers(scene, MARKER_DEFS);
+    const { markers, beamGeo, chevronGeo, groundDiscGeo, outerRingGeo } = createSceneMarkers(scene, MARKER_DEFS);
     let activeMarkerIdx = -1;
 
     const onMarkerActivate = () => {
@@ -367,7 +377,7 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
     };
 
     // ── STARS (SKY) ───────────────────────────────────────────────────────────
-    const STARS_COUNT = isMobile ? 1000 : 3000;
+    const STARS_COUNT = isMobile ? 600 : 2500;
     const sPos = new Float32Array(STARS_COUNT * 3);
     const sBaseCol = new Float32Array(STARS_COUNT * 3);
     const sPhase = new Float32Array(STARS_COUNT);
@@ -448,7 +458,7 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
 
     // ── SHOOTING STARS ────────────────────────────────────────────────────────
     const ssGeo = new THREE.BufferGeometry();
-    const MAX_SHOOTING_STARS = isMobile ? 5 : 15;
+    const MAX_SHOOTING_STARS = isMobile ? 4 : 12;
     const ssPos = new Float32Array(MAX_SHOOTING_STARS * 6);
     const ssCol = new Float32Array(MAX_SHOOTING_STARS * 6);
 
@@ -799,7 +809,8 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
       }
 
       // ── SHOOTING STARS ────────────────────────────────────────────────────────
-      if (qualityProfile.enableParticles && doFullUpdate) {
+      // Skip expensive SS updates during high-speed intro camera tour
+      if (qualityProfile.enableParticles && doFullUpdate && !isIntroActive) {
         for (let i = 0; i < MAX_SHOOTING_STARS; i++) {
           const d = ssData[i];
           if (!d.active) { if (Math.random() < 0.015) resetShootingStar(i); continue; }
@@ -825,7 +836,8 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
       }
 
       // ── EMBERS ────────────────────────────────────────────────────────────────
-      if (qualityProfile.enableParticles && doFullUpdate) {
+      // Skip expensive particle updates during high-speed intro camera tour
+      if (qualityProfile.enableParticles && doFullUpdate && !isIntroActive) {
         for (let i = 0; i < EMBER_COUNT; i++) {
           eLife[i] += dt;
           if (eLife[i] >= eMax[i]) { resetEmber(i, false); continue; }
@@ -857,11 +869,33 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
         const _s2 = Math.sin(elapsed * 1.2 + phase);
         const _s3 = Math.sin(elapsed * 1.4 + phase);
         const _s4 = Math.sin(elapsed * 1.6 + phase * 0.9);
-        m.chevron.rotation.y = elapsed * 1.8 + phase;
-        m.chevron.position.y = 8.5 + _s1 * 0.25;
-        (m.beam.material as THREE.MeshBasicMaterial).opacity = 0.11 + _s2 * 0.04;
-        (m.groundDisc.material as THREE.MeshBasicMaterial).opacity = 0.28 + _s3 * 0.10;
-        m.glow.intensity = 1.5 + _s4 * 0.5;
+
+        // Chevron: rotate + bob
+        m.chevron.rotation.y = elapsed * 2.0 + phase;
+        m.chevron.position.y = 17.0 + _s1 * 0.5;
+
+        // Beam: subtle pulse
+        (m.beam.material as THREE.MeshBasicMaterial).opacity = 0.18 + _s2 * 0.08;
+
+        // Inner ground disc: spin slowly + pulse
+        m.groundDisc.rotation.z = elapsed * 0.3 + phase;
+        (m.groundDisc.material as THREE.MeshBasicMaterial).opacity = 0.45 + _s3 * 0.15;
+
+        // Outer ring: counter-rotate + scale pulse
+        m.outerRing.rotation.z = -elapsed * 0.5 + phase;
+        const outerScale = 1.0 + _s4 * 0.12;
+        m.outerRing.scale.set(outerScale, outerScale, 1);
+        (m.outerRing.material as THREE.MeshBasicMaterial).opacity = 0.22 + _s4 * 0.10;
+
+        // Point light pulse
+        m.glow.intensity = 5.0 + _s4 * 2.0;
+
+        // Proximity scale-up: markers grow slightly when player is near
+        const proxScale = dist < MARKER_INTERACT_RADIUS
+          ? 1.0 + (1.0 - dist / MARKER_INTERACT_RADIUS) * 0.15
+          : 1.0;
+        m.group.scale.setScalar(proxScale);
+
         if (dist < MARKER_INTERACT_RADIUS && dist < closestDist) { closestDist = dist; closestIdx = mi; }
       }
 
@@ -889,7 +923,10 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
         _camDesired.y += Math.sin(elapsed * 0.90) * 0.05;
         _camDesired.z += Math.cos(elapsed * 0.60) * 0.05;
       }
-      camCurrent.lerp(_camDesired, CAM_SMOOTH);
+      // During intro: skip lerp — copy directly for buttery smooth rotation.
+      // The lerp causes visible judder when the eased rotation is fast.
+      if (isIntroActive) camCurrent.copy(_camDesired);
+      else camCurrent.lerp(_camDesired, CAM_SMOOTH);
 
       const camR2 = camCurrent.lengthSq();
       if (camR2 > CAM_MAX_RADIUS * CAM_MAX_RADIUS)
@@ -901,35 +938,7 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
       else renderer.render(scene, camera);
     };
 
-    // ── LOADING BADGE ─────────────────────────────────────────────────────────
-    const loadingBadge = document.createElement('div');
-    loadingBadge.style.cssText = `
-      position: fixed; right: 18px; bottom: 18px; z-index: 41;
-      padding: 6px 10px; border-radius: 8px;
-      background: rgba(0,0,0,0.45); color: rgba(255,255,255,0.82);
-      border: 1px solid rgba(255,255,255,0.14);
-      font: 11px/1.2 'Inter', system-ui, sans-serif; pointer-events: none;
-    `;
-    document.body.appendChild(loadingBadge);
 
-    let loadingBadgeRoot: Root | null = null;
-    try {
-      loadingBadgeRoot = createRoot(loadingBadge);
-      loadingBadgeRoot.render(
-        <DecryptedText
-          text="Preparing 3D experience..."
-          speed={60}
-          maxIterations={15}
-          characters="ABCD1234!?>_/"
-          className="revealed"
-          animateOn="view"
-          revealDirection="start"
-        />
-      );
-    } catch (e) {
-      console.warn('Failed to render React DecryptedText into loading badge', e);
-      loadingBadge.textContent = 'Preparing 3D experience...';
-    }
 
     const initBasicScene = async () => {
       await new Promise<void>(resolve => setTimeout(resolve, 120));
@@ -1044,19 +1053,42 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
 
     const startAnimationLoop = async () => {
       await initBasicScene();
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          loadAssets()
-            .finally(() => {
-              if (loadingBadgeRoot) setTimeout(() => loadingBadgeRoot?.unmount(), 0);
-              if (document.body.contains(loadingBadge)) document.body.removeChild(loadingBadge);
-            })
-            .catch(err => console.error('Map asset init error:', err));
-        }, 80);
-      });
-      setTimeout(() => {
-        enablePostProcessing().catch(err => console.error('PostFX init error:', err));
-      }, 420);
+
+      // Load assets first (models, textures) — sequential to avoid overlap
+      try {
+        await loadAssets();
+      } catch (err) {
+        console.error('Map asset init error:', err);
+      }
+
+      // Then enable post-processing (shader compilation, framebuffer allocation)
+      try {
+        await enablePostProcessing();
+      } catch (err) {
+        console.error('PostFX init error:', err);
+      }
+
+      // ── MULTI-ANGLE WARM-UP RENDERS ──
+      // Force shader compilation from multiple camera angles so the GPU doesn't
+      // lazily compile shaders when new geometry enters view during the 360° intro.
+      const savedPos = camera.position.clone();
+      const savedTarget = new THREE.Vector3();
+      camera.getWorldDirection(savedTarget);
+
+      for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 4) {
+        camera.position.set(
+          Math.sin(angle) * CAM_DIST_DEFAULT,
+          charH * 0.3 + CAM_DIST_DEFAULT * 0.15,
+          Math.cos(angle) * CAM_DIST_DEFAULT,
+        );
+        camera.lookAt(0, charH * 0.55, 0);
+        renderer.render(scene, camera);
+        if (postFxRuntime) postFxRuntime.composer.render();
+      }
+
+      // Restore camera
+      camera.position.copy(savedPos);
+      camera.lookAt(savedTarget);
     };
 
     startAnimationLoop().catch(err => console.error('Map start error:', err));
@@ -1085,14 +1117,14 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
       window.removeEventListener('keydown', onMarkerKeyDown);
       markerPrompt.removeEventListener('click', onMarkerTap);
       if (document.body.contains(markerPrompt)) document.body.removeChild(markerPrompt);
-      if (loadingBadgeRoot) setTimeout(() => loadingBadgeRoot?.unmount(), 0);
-      if (document.body.contains(loadingBadge)) document.body.removeChild(loadingBadge);
 
-      beamGeo.dispose(); chevronGeo.dispose(); groundDiscGeo.dispose();
+
+      beamGeo.dispose(); chevronGeo.dispose(); groundDiscGeo.dispose(); outerRingGeo.dispose();
       for (const m of markers) {
         (m.beam.material as THREE.Material).dispose();
         (m.chevron.material as THREE.Material).dispose();
         (m.groundDisc.material as THREE.Material).dispose();
+        (m.outerRing.material as THREE.Material).dispose();
         m.glow.dispose();
       }
 
@@ -1113,7 +1145,7 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
     const stateEl = document.getElementById('state');
     const canvas = mountRef.current?.querySelector('canvas') as HTMLCanvasElement | null;
 
-    if (activePage) {
+    if (activePage || !hasStartedRef.current) {
       if (joystickZone) joystickZone.style.display = 'none';
       if (hudEl) hudEl.style.display = 'none';
       if (stateEl) stateEl.style.display = 'none';

@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense } from 'react';
+import { useState, useCallback, lazy, Suspense } from 'react';
 import Preloader from './components/Preloader';
 import Navbar from './components/Navbar';
 import Map from './components/Map';
@@ -41,21 +41,18 @@ export default function App() {
     contact: <Contact />,
   };
 
+  const handlePreloaderComplete = useCallback(() => setPreloaderDone(true), []);
+
   return (
     <div className="app-root">
 
       {/* ── PRELOADER (video + progress bar) ─────────────────────────────── */}
-      {/* Stays mounted until onComplete fires, then fades out and unmounts */}
       {!preloaderDone && (
-        <Preloader onComplete={() => setPreloaderDone(true)} />
+        <Preloader onComplete={handlePreloaderComplete} />
       )}
 
       {/* ── MAIN EXPERIENCE ───────────────────────────────────────────────── */}
-      {/* 
-        Three.js 3D world — fills the full viewport at z-index 2 
-        Loads immediately in the background behind the z-index 999
-        Preloader so WebGL shaders compile concurrently!
-      */}
+      {/* Mounted immediately — WebGL initializes while preloader plays */}
       <Map
         onNavigate={(page) => setActivePage(page)}
         onClose={() => setActivePage(null)}

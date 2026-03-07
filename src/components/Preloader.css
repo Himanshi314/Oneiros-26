@@ -4,17 +4,15 @@
     left: 0;
     width: 100%;
     height: 100vh;
-    /* Fallback */
     height: 100dvh;
-    /* Modern mobile browsers */
     background: radial-gradient(circle at center, #0a0a1a 0%, #000000 100%);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 999;
-    /* Ensure it stays above everything */
     transition: opacity 0.5s ease, visibility 0.5s ease;
     overflow: hidden;
+    contain: layout style;
 }
 
 .preloader-container.fade-out {
@@ -27,24 +25,22 @@
     max-width: 600px;
     height: auto;
     object-fit: contain;
-    /* Prevents distortion and keeps aspect ratio */
     position: absolute;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%) translateZ(0);
     pointer-events: none;
-    /* Prevents interaction with the video element */
     mix-blend-mode: screen;
+    will-change: transform, opacity;
+    backface-visibility: hidden;
+    contain: paint;
 }
 
 /* Mobile specific styling adjustments */
 @media (max-width: 768px) {
     .preloader-video {
-        /* Mild zoom for mobile */
         width: 120%;
         max-width: 550px;
-
-        /* Natural enlargement avoiding scale clipping */
         transform: translate(-50%, -50%) translateZ(0);
     }
 }
@@ -54,7 +50,7 @@
     position: absolute;
     bottom: 15%;
     left: 50%;
-    transform: translateX(-50%);
+    transform: translateX(-50%) translateZ(0);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -62,6 +58,7 @@
     max-width: 400px;
     font-family: 'Exo 2', sans-serif;
     z-index: 10;
+    contain: layout style;
 }
 
 .loading-percentage {
@@ -90,35 +87,14 @@
     overflow: hidden;
     position: relative;
     box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.8), 0 0 1px rgba(255, 255, 255, 0.1);
+    contain: paint;
 }
 
 .loading-bar-fill {
     height: 100%;
     background: linear-gradient(90deg, rgba(0, 255, 235, 0.2), rgba(0, 255, 235, 0.8), #fff);
     border-radius: 10px;
-    transition: width 0.15s linear;
+    transition: width 0.12s linear;
     box-shadow: 0 0 15px rgba(0, 255, 235, 0.6), inset 0 0 5px rgba(255, 255, 255, 0.8);
-}
-
-/* ── Cosmic Background CSS Animations ─────────────────────────────────────── */
-/* These run on the compositor thread — completely immune to JS main-thread blocking */
-
-@keyframes cosmic-twinkle {
-    0% {
-        opacity: 0.3;
-    }
-
-    100% {
-        opacity: 1;
-    }
-}
-
-@keyframes cosmic-rotate {
-    from {
-        transform: rotate(0deg);
-    }
-
-    to {
-        transform: rotate(360deg);
-    }
+    will-change: width;
 }
