@@ -17,8 +17,8 @@ export default defineConfig({
         manualChunks: {
           // Keep React separate for better caching
           vendor: ['react', 'react-dom'],
-          // Three.js + fiber in its own chunk since it's large
-          three: ['three', '@react-three/fiber'],
+          // Three.js in its own chunk since it's large
+          three: ['three'],
           // Motion in its own chunk
           motion: ['motion'],
         },

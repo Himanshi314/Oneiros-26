@@ -2,8 +2,7 @@ import { lazy, Suspense, useState } from 'react';
 import { BrowserRouter, useLocation, useNavigate } from 'react-router-dom';
 import Preloader from './components/Preloader';
 import Navbar from './components/Navbar';
-import ConstellationScene from './components/ConstellationScene';
-import NavigationHub from './components/NavigationHub';
+import Map from './components/Map';
 import './App.css';
 
 // ── Lazy-loaded page overlays (only fetched when user navigates to them) ──
@@ -36,9 +35,8 @@ const pageComponents: Record<string, React.ReactNode> = {
  *
  *   z-index 999  →  Preloader (video, fullscreen, unmounts after completion)
  *   z-index  50  →  Navbar (fixed, liquid glass, always above canvas)
- *   z-index  30  →  Page overlay (scrollable page content)
- *   z-index   5  →  NavigationHub (carousel, gestures)
- *   z-index   0  →  ConstellationScene (Three.js starfield background)
+ *   z-index  40  →  HUD / joystick / state badge (in index.html)
+ *   z-index   2  →  Three.js canvas (Map.tsx, fixed, full viewport)
  */
 function AppContent() {
   const location = useLocation();
@@ -65,12 +63,11 @@ function AppContent() {
         </h1>
       )}
 
-      {/* ── CONSTELLATION BACKGROUND ──────────────────────────────────── */}
-      <ConstellationScene dimmed={!!activePage} />
-
-      {/* ── NAVIGATION HUB (landing carousel) ─────────────────────────── */}
-      <NavigationHub
-        onNavigate={(page) => handleNavigate(page)}
+      {/* ── MAIN EXPERIENCE ───────────────────────────────────────────────── */}
+      {/* Mounted immediately — WebGL initializes while preloader plays */}
+      <Map
+        onNavigate={handleNavigate}
+        onClose={() => handleNavigate(null)}
         activePage={activePage}
       />
 
