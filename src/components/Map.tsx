@@ -896,7 +896,7 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
 
         // Chevron: rotate + bob
         m.chevron.rotation.y = elapsed * 2.0 + phase;
-        m.chevron.position.y = 17.0 + _s1 * 0.5;
+        m.chevron.position.y = 8.8 + _s1 * 0.4;
 
         // Beam: subtle pulse
         (m.beam.material as THREE.MeshBasicMaterial).opacity = 0.18 + _s2 * 0.08;

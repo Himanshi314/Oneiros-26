@@ -102,10 +102,10 @@ export const createSceneMarkers = (
   const markers: MarkerRuntime[] = [];
 
   // ── Enhanced marker geometries ──
-  const beamGeo = new THREE.CylinderGeometry(1.0, 1.4, 16, 32, 1, true); // thick tapered beam
-  const chevronGeo = new THREE.ConeGeometry(1.2, 1.5, 4);                 // large diamond arrow
-  const groundDiscGeo = new THREE.RingGeometry(1.2, 2.8, 64);             // wide inner ring
-  const outerRingGeo = new THREE.RingGeometry(3.2, 3.8, 64);              // large outer pulsing ring
+  const beamGeo = new THREE.CylinderGeometry(0.8, 1.2, 8, 32, 1, true);     // slightly thinner and much shorter
+  const chevronGeo = new THREE.ConeGeometry(0.9, 1.2, 4);                 // more compact diamond arrow
+  const groundDiscGeo = new THREE.RingGeometry(1.0, 2.4, 64);             // tighter inner ring
+  const outerRingGeo = new THREE.RingGeometry(2.8, 3.4, 64);              // tighter outer ring
 
   for (const def of defs) {
     const col = new THREE.Color(def.color);
@@ -122,7 +122,7 @@ export const createSceneMarkers = (
       blending: THREE.AdditiveBlending,
     });
     const beam = new THREE.Mesh(beamGeo, beamMat);
-    beam.position.y = 8.0; // centered higher (spans 0–16)
+    beam.position.y = 4.0; // spans 0–8
     group.add(beam);
 
     // ── Rotating chevron/arrow pointing down at the top ──
@@ -134,7 +134,7 @@ export const createSceneMarkers = (
     });
     const chevron = new THREE.Mesh(chevronGeo, chevronMat);
     chevron.rotation.x = Math.PI; // point downwards
-    chevron.position.y = 17.0;
+    chevron.position.y = 8.8;
     group.add(chevron);
 
     // ── Inner ground ring ──
@@ -148,7 +148,7 @@ export const createSceneMarkers = (
     });
     const groundDisc = new THREE.Mesh(groundDiscGeo, groundDiscMat);
     groundDisc.rotation.x = -Math.PI / 2;
-    groundDisc.position.y = 0.06;
+    groundDisc.position.y = 0.12;
     group.add(groundDisc);
 
     // ── Outer pulsing ring ──
@@ -162,12 +162,12 @@ export const createSceneMarkers = (
     });
     const outerRing = new THREE.Mesh(outerRingGeo, outerRingMat);
     outerRing.rotation.x = -Math.PI / 2;
-    outerRing.position.y = 0.04;
+    outerRing.position.y = 0.08;
     group.add(outerRing);
 
     // ── Powerful point light for far visibility ──
     const glow = new THREE.PointLight(def.color, 6.0, 30);
-    glow.position.y = 6.0;
+    glow.position.y = 4.0;
     group.add(glow);
 
     scene.add(group);

@@ -99,7 +99,7 @@ function ImageCollage({
 
   return (
     <motion.div
-      className="relative flex-shrink-0"
+      className="relative shrink-0"
       style={{ width: "min(500px, 90vw)", height: "min(580px, 70vw)" }}
       initial={{ opacity: 0, y: 40 }}
       whileInView={{ opacity: 1, y: 0 }}
@@ -189,7 +189,7 @@ function EventSection({ event }: { event: Event }) {
         className="relative z-10 hidden lg:flex items-center justify-between w-full max-w-7xl mx-auto px-16 gap-8"
         style={{ flexDirection: event.imageLeft ? "row" : "row-reverse" }}
       >
-        <div className="flex items-center justify-center flex-shrink-0">
+        <div className="flex items-center justify-center shrink-0">
           <ImageCollage images={event.images} glowColors={event.glowColors} reversed={!event.imageLeft} eventName={event.name} />
         </div>
 
