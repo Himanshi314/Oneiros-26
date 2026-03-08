@@ -235,10 +235,10 @@ function EventSection({ event }: { event: Event }) {
         {/* Single hero image on mobile */}
         <div
           style={{
-            width: "85vw",
-            height: "55vw",
-            maxWidth: "400px",
-            maxHeight: "260px",
+            width: "75vw",
+            height: "95vw",
+            maxWidth: "340px",
+            maxHeight: "440px",
             borderRadius: "16px",
             overflow: "hidden",
             border: `1.5px solid ${event.glowColors[0]}60`,
@@ -247,7 +247,7 @@ function EventSection({ event }: { event: Event }) {
           }}
         >
           <img
-            src={event.images[0]}
+            src={event.images[2]}
             alt={`${event.name} at Oneiros 2026`}
             style={{ width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.88) contrast(1.05)" }}
             loading="lazy"
