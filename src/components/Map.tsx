@@ -330,8 +330,6 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
 
     const onMarkerKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'e' || e.key === 'E') {
-        if (activePageRef.current === 'contact') return; // Disable 'E' to go back specifically on Contact page
-
         if (activePageRef.current) onCloseRef.current?.();
         else onMarkerActivate();
       }
@@ -1142,26 +1140,38 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
         console.error('PostFX init error:', err);
       }
 
-      // ── MULTI-ANGLE WARM-UP RENDERS ──
-      // Force shader compilation from multiple camera angles so the GPU doesn't
-      // lazily compile shaders when new geometry enters view during the 360° intro.
+      // ── WARM-UP COMPILATION ──
       const savedPos = camera.position.clone();
       const savedTarget = new THREE.Vector3();
       camera.getWorldDirection(savedTarget);
+      savedTarget.add(savedPos); // FIX: getWorldDirection returns a relative vector
 
-      for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 4) {
+      try {
+        // Force compile all materials in the scene
+        renderer.compile(scene, camera);
+      } catch (err) {
+        console.warn('Shader compile warmup error:', err);
+      }
+
+      // ── MULTI-ANGLE WARM-UP RENDERS ──
+      // Some post-processing passes and dynamic objects still lazily compile 
+      // when first drawn. Do a few rotational renders, but abort if experience starts.
+      for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 2) {
+        if (hasStartedRef.current) break; // Abort if experience started to prevent racing/stutter
+
         camera.position.set(
           Math.sin(angle) * CAM_DIST_DEFAULT,
           charH * 0.3 + CAM_DIST_DEFAULT * 0.15,
           Math.cos(angle) * CAM_DIST_DEFAULT,
         );
         camera.lookAt(0, charH * 0.55, 0);
-        renderer.render(scene, camera);
-        if (postFxRuntime) postFxRuntime.composer.render();
-        // Yield generously between warm-up renders to avoid blocking the preloader video decoder
-        // requestAnimationFrame still hammers the main thread immediately. setTimeout(..., 40) 
-        // gives the browser exactly 2-3 frames to process video and fluidly finish the playback.
-        await new Promise<void>(r => setTimeout(r, 40));
+
+        try {
+          if (postFxRuntime) postFxRuntime.composer.render();
+          else renderer.render(scene, camera);
+        } catch (e) { }
+
+        await new Promise<void>(r => setTimeout(r, 45));
       }
 
       // Restore camera
@@ -1169,13 +1179,11 @@ export default function Map({ onNavigate, onClose, activePage }: MapProps) {
       camera.lookAt(savedTarget);
 
       // Everything is pre-compiled. Enable rendering when the intro begins.
-      // If start-experience already fired before we got here, enable immediately.
       if (hasStartedRef.current) {
         renderingEnabled = true;
       } else {
         const onStart = () => {
           renderingEnabled = true;
-          timer.reset();
           window.removeEventListener('start-experience', onStart);
         };
         window.addEventListener('start-experience', onStart);

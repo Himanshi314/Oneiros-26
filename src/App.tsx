@@ -103,48 +103,46 @@ function AppContent() {
             >
               ✕
             </button>
-            {activePage !== 'contact' && (
-              <>
-                {/* Desktop: static hint */}
-                <span
-                  style={{
-                    position: 'fixed',
-                    bottom: 24,
-                    right: 28,
-                    zIndex: 1001,
-                    padding: '8px 16px',
-                    borderRadius: 8,
-                    background: 'rgba(0,0,0,0.55)',
-                    backdropFilter: 'blur(8px)',
-                    border: '1px solid rgba(255,255,255,0.12)',
-                    color: 'rgba(255,255,255,0.7)',
-                    fontSize: 13,
-                    fontFamily: "'Inter', system-ui, sans-serif",
-                    letterSpacing: '0.3px',
-                    pointerEvents: 'none',
-                    userSelect: 'none',
-                    display: 'var(--back-desktop-display, block)' as never,
-                  }}
-                  className="back-hint-desktop"
-                >
-                  Press <kbd style={{ padding: '2px 6px', borderRadius: 4, background: 'rgba(255,255,255,0.12)', fontWeight: 600, color: '#fff' }}>E</kbd> to go back
-                </span>
+            <>
+              {/* Desktop: static hint */}
+              <span
+                style={{
+                  position: 'fixed',
+                  bottom: 24,
+                  right: 28,
+                  zIndex: 1001,
+                  padding: '8px 16px',
+                  borderRadius: 8,
+                  background: 'rgba(0,0,0,0.55)',
+                  backdropFilter: 'blur(8px)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  color: 'rgba(255,255,255,0.7)',
+                  fontSize: 13,
+                  fontFamily: "'Inter', system-ui, sans-serif",
+                  letterSpacing: '0.3px',
+                  pointerEvents: 'none',
+                  userSelect: 'none',
+                  display: 'var(--back-desktop-display, block)' as never,
+                }}
+                className="back-hint-desktop"
+              >
+                Press <kbd style={{ padding: '2px 6px', borderRadius: 4, background: 'rgba(255,255,255,0.12)', fontWeight: 600, color: '#fff' }}>E</kbd> to go back
+              </span>
 
-                {/* Mobile: scroll hint + back button */}
-                <div className="mobile-bottom-hud">
-                  <div className="mobile-scroll-hint">
-                    <div className="mobile-scroll-line" />
-                    <span className="mobile-scroll-text">Scroll</span>
-                  </div>
-                  <button
-                    onClick={() => handleNavigate(null)}
-                    className="back-hint-mobile-btn"
-                  >
-                    Tap here to go back
-                  </button>
+              {/* Mobile: scroll hint + back button */}
+              <div className="mobile-bottom-hud">
+                <div className="mobile-scroll-hint">
+                  <div className="mobile-scroll-line" />
+                  <span className="mobile-scroll-text">Scroll</span>
                 </div>
-              </>
-            )}
+                <button
+                  onClick={() => handleNavigate(null)}
+                  className="back-hint-mobile-btn"
+                >
+                  Tap here to go back
+                </button>
+              </div>
+            </>
             {pageComponents[activePage]}
           </div>
         </Suspense>
