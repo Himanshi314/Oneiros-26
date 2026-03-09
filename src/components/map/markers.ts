@@ -24,25 +24,27 @@ export const createMarkerPrompt = () => {
 
   const mobileStyles = `
       position: fixed;
-      top: 60%;
-      left: 50%;
-      transform: translate(-50%, -50%);
+      bottom: 24px;
+      right: 20px;
       z-index: 45;
-      padding: 14px 30px;
-      border-radius: 16px;
-      background: rgba(0,0,0,0.82);
-      backdrop-filter: blur(14px);
-      border: 1px solid rgba(255,255,255,0.22);
+      padding: 10px 18px;
+      border-radius: 14px;
+      background: rgba(6, 6, 20, 0.85);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.15);
       color: #fff;
-      font-family: 'Inter', system-ui, sans-serif;
-      font-size: 15px;
-      letter-spacing: 0.4px;
+      font-family: 'Orbitron', 'Inter', system-ui, sans-serif;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 1px;
+      text-transform: uppercase;
       text-align: center;
       pointer-events: none;
       opacity: 0;
-      transition: opacity 0.25s ease;
+      transition: all 0.3s ease;
       white-space: nowrap;
-      max-width: 85vw;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
   `;
 
   const desktopStyles = `
@@ -88,7 +90,14 @@ export const setMarkerPromptState = (
   }
 
   const hex = '#' + new THREE.Color(marker.color).getHexString();
-  markerPrompt.innerHTML = `<span style="color:${hex}; text-shadow: 0 0 12px ${hex}55;">${marker.label}</span> <span style="opacity:0.5; margin: 0 6px;">—</span> <span style="opacity:0.7; font-size:12px; letter-spacing:2px;">Press <kbd style="padding:2px 8px; border-radius:5px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); font-weight:700; color:#fff; font-size:13px;">E</kbd> or tap</span>`;
+  const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
+    || ('ontouchstart' in window && window.innerWidth < 1024);
+
+  const actionText = isMobile
+    ? `<span style="opacity:0.7; font-size:12px; letter-spacing:2px;">tap</span>`
+    : `<span style="opacity:0.7; font-size:12px; letter-spacing:2px;">Press <kbd style="padding:2px 8px; border-radius:5px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); font-weight:700; color:#fff; font-size:13px;">E</kbd> or tap</span>`;
+
+  markerPrompt.innerHTML = `<span style="color:${hex}; text-shadow: 0 0 12px ${hex}55;">${marker.label}</span> <span style="opacity:0.5; margin: 0 6px;">—</span> ${actionText}`;
   markerPrompt.style.borderColor = `${hex}33`;
   markerPrompt.style.boxShadow = `0 4px 30px rgba(0,0,0,0.5), 0 0 20px ${hex}15, inset 0 0 0 1px ${hex}18`;
   markerPrompt.style.opacity = '1';
