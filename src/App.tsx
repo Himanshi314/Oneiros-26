@@ -130,35 +130,19 @@ function AppContent() {
                   Press <kbd style={{ padding: '2px 6px', borderRadius: 4, background: 'rgba(255,255,255,0.12)', fontWeight: 600, color: '#fff' }}>E</kbd> to go back
                 </span>
 
-                {/* Mobile: tappable button */}
-                <button
-                  onClick={() => handleNavigate(null)}
-                  className="back-hint-mobile"
-                  style={{
-                    position: 'fixed',
-                    bottom: 36,
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    zIndex: 1001,
-                    padding: '12px 28px',
-                    borderRadius: 50,
-                    background: 'rgba(0,0,0,0.72)',
-                    backdropFilter: 'blur(12px)',
-                    border: '1px solid rgba(255,255,255,0.22)',
-                    color: 'rgba(255,255,255,0.85)',
-                    fontSize: 14,
-                    fontFamily: "'Inter', system-ui, sans-serif",
-                    letterSpacing: '0.3px',
-                    cursor: 'pointer',
-                    userSelect: 'none',
-                    display: 'none',
-                    alignItems: 'center',
-                    gap: 8,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  Tap here to go back
-                </button>
+                {/* Mobile: scroll hint + back button */}
+                <div className="mobile-bottom-hud">
+                  <div className="mobile-scroll-hint">
+                    <div className="mobile-scroll-line" />
+                    <span className="mobile-scroll-text">Scroll</span>
+                  </div>
+                  <button
+                    onClick={() => handleNavigate(null)}
+                    className="back-hint-mobile-btn"
+                  >
+                    Tap here to go back
+                  </button>
+                </div>
               </>
             )}
             {pageComponents[activePage]}
