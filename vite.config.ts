@@ -13,18 +13,19 @@ export default defineConfig({
   build: {
     target: 'es2020',
     sourcemap: false,
+    minify: 'esbuild',
     cssMinify: 'lightningcss',
     rollupOptions: {
       output: {
         manualChunks: {
-          // Keep React separate for better caching
           vendor: ['react', 'react-dom'],
-          // Three.js in its own chunk since it's large
+          router: ['react-router-dom'],
           three: ['three'],
-          // Motion in its own chunk
           motion: ['motion'],
+          icons: ['lucide-react'], // If used, otherwise it's safe to keep
         },
       },
     },
+    chunkSizeWarningLimit: 1000,
   },
 })

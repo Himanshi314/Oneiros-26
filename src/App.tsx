@@ -2,8 +2,10 @@ import { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import { BrowserRouter, useLocation, useNavigate } from 'react-router-dom';
 import Preloader from './components/Preloader';
 import Navbar from './components/Navbar';
-import Map from './components/Map';
 import './App.css';
+
+// ── Heavy 3D component (lazy-loaded to avoid blocking the initial preloader paint) ──
+const Map = lazy(() => import('./components/Map'));
 
 // ── Lazy-loaded page overlays (only fetched when user navigates to them) ──
 const About = lazy(() => import('./components/About'));
@@ -16,6 +18,7 @@ const Sponsors = lazy(() => import('./components/Sponsors'));
 const Contact = lazy(() => import('./components/Contact'));
 const Gallery = lazy(() => import('./components/Gallery'));
 const Schedule = lazy(() => import('./components/Schedule'));
+
 
 const pageComponents: Record<string, React.ReactNode> = {
   about: <About />,
@@ -80,11 +83,13 @@ function AppContent() {
 
       {/* ── MAIN EXPERIENCE ───────────────────────────────────────────────── */}
       {/* Mounted immediately — WebGL initializes while preloader plays */}
-      <Map
-        onNavigate={handleNavigate}
-        onClose={() => handleNavigate(null)}
-        activePage={activePage}
-      />
+      <Suspense fallback={null}>
+        <Map
+          onNavigate={handleNavigate}
+          onClose={() => handleNavigate(null)}
+          activePage={activePage}
+        />
+      </Suspense>
 
       {/* Page overlay — shown when a nav link is clicked */}
       {activePage && pageComponents[activePage] && (
